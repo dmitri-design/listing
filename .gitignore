@@ -8,3 +8,4 @@ _build/raw/
 _build/images.json
 CLAUDE.md
 _build/
+.playwright-mcp/
