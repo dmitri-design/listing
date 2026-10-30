@@ -15,12 +15,17 @@ const ART = {
 const app = document.getElementById('app');
 const $ = (sel, root) => (root || document).querySelector(sel);
 const L = () => app.classList.contains('ru') ? 'ru' : 'en';
-const t = (v) => (v && typeof v === 'object')
-  ? `<span class="l-en" lang="en">${v.en ?? ''}</span><span class="l-ru" lang="ru">${v.ru ?? v.en ?? ''}</span>`
-  : (v ?? '');
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+/* bilingual string → two spans; data text is escaped, `raw` only for site strings that carry markup (<i>, &nbsp;) */
+const t = (v, raw) => {
+  const f = raw ? (x) => x : esc;
+  if (v && typeof v === 'object') return `<span class="l-en" lang="en">${f(v.en ?? '')}</span><span class="l-ru" lang="ru">${f(v.ru ?? v.en ?? '')}</span>`;
+  return v == null ? '' : f(v);
+};
 const art = (k) => (ART[k] || ART.ring).replace('<svg ', '<svg width="100%" height="100%" ');
-const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+const safeUrl = (u) => (typeof u === 'string' && /^https?:\/\//i.test(u)) ? u : null;
 const MARK = { y: '✓', g: '~', n: '✗' };
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 let DATA = null;   // { site, tiers, ui, items }
 
@@ -28,7 +33,10 @@ let DATA = null;   // { site, tiers, ui, items }
 function setLang(l, save) {
   app.classList.toggle('ru', l === 'ru');
   document.documentElement.lang = l;
-  document.querySelectorAll('.lang button').forEach(b => b.classList.toggle('on', b.dataset.lang === l));
+  document.querySelectorAll('.lang button').forEach(b => {
+    const on = b.dataset.lang === l;
+    b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
   if (DATA) document.title = DATA.site.title[l].replace(/<[^>]+>/g, '') + ' · ' + DATA.site.owner;
   if (save) { try { localStorage.setItem('wl-lang', l); } catch (e) {} }
 }
@@ -42,12 +50,12 @@ function renderTitle(title) {
   const h = $('#title');
   const mk = (txt, cls) => {
     let i = 0, out = '';
-    for (const part of txt.split(/(<i>.*?<\/i>)/)) {
+    for (const part of String(txt).split(/(<i>.*?<\/i>)/)) {
       if (!part) continue;
       const ital = part.startsWith('<i>');
       const chars = part.replace(/<\/?i>/g, '');
       for (const ch of chars) {
-        const c = ch === ' ' ? '&nbsp;' : ch;
+        const c = ch === ' ' ? '&nbsp;' : esc(ch);
         out += ital ? `<i><span class="ch" style="--i:${i++}">${c}</span></i>` : `<span class="ch" style="--i:${i++}">${c}</span>`;
       }
     }
@@ -61,7 +69,7 @@ function renderSite(site) {
   renderTitle(site.title);
   $('.brand').innerHTML = t(site.brand);
   $('.tag').innerHTML = t(site.tagline);
-  $('.legend').innerHTML = t(site.legend);
+  $('.legend').innerHTML = t(site.legend, true);
   $('footer .txt').innerHTML = t(site.footer);
   setLang(L(), false);
 }
@@ -69,10 +77,11 @@ function renderSite(site) {
 /* ---------- tier nav ---------- */
 function renderNav(tiers) {
   const nav = $('#tiernav');
-  nav.innerHTML = tiers.map(tr => `<a href="#tier-${tr.id}" style="--c:${tr.c}"><span class="dot"></span>${t(tr.name)}</a>`).join('');
+  nav.innerHTML = tiers.map(tr => `<a href="#tier-${esc(tr.id)}" style="--c:${esc(tr.c)}"><span class="dot"></span>${t(tr.name)}</a>`).join('');
   nav.addEventListener('click', (e) => {
     const a = e.target.closest('a'); if (!a) return; e.preventDefault();
-    const el = document.querySelector(a.getAttribute('href')); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const el = document.querySelector(a.getAttribute('href'));
+    if (el) el.scrollIntoView({ behavior: reduced.matches ? 'auto' : 'smooth', block: 'start' });
   });
 }
 
@@ -80,10 +89,9 @@ function renderNav(tiers) {
 function imgHTML(it, cls, eager) {
   const photo = it.kind === 'photo';
   if (!it.image) {
-    const key = it.illustration || 'ring';
-    return `<div class="${cls}">${art(key)}<span class="sketch">${t(DATA.ui.sketch)}</span></div>`;
+    return `<div class="${cls}">${art(it.illustration || 'ring')}<span class="sketch">${t(DATA.ui.sketch)}</span></div>`;
   }
-  const dim = it.w && it.h ? ` width="${it.w}" height="${it.h}"` : '';
+  const dim = it.w && it.h ? ` width="${+it.w}" height="${+it.h}"` : '';
   return `<div class="${cls}${photo ? ' photo' : ''}"><img src="${esc(it.image)}" alt=""${dim} loading="${eager ? 'eager' : 'lazy'}" decoding="async"></div>`;
 }
 function thumbHTML(it) {
@@ -94,12 +102,12 @@ function thumbHTML(it) {
 function cardHTML(it, tier, idx, ri, eager) {
   const ui = DATA.ui;
   const av = ['eu', 'tr', 'ru'].map(k => {
-    const v = (it.avail && it.avail[k]) || 'n';
+    let v = it.avail && it.avail[k]; if (!MARK[v]) v = 'n';
     return `<span class="${v}"><b>${MARK[v]}</b><small>${t(ui[k])}</small></span>`;
   }).join('');
   const where = (it.where || []).map(w => {
-    const label = t(w.t);
-    return `<li>${w.u ? `<a href="${esc(w.u)}" target="_blank" rel="noopener">${label}</a>` : `<span>${label}</span>`}</li>`;
+    const label = t(w.t), u = safeUrl(w.u);
+    return `<li>${u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${label}</a>` : `<span>${label}</span>`}</li>`;
   }).join('');
   const pins = [tier.pin, '#c9a06b', '#d9b88a'];
   const pin = pins[idx % pins.length];
@@ -107,25 +115,26 @@ function cardHTML(it, tier, idx, ri, eager) {
   const delay = (-((idx * 53) % 30) / 10).toFixed(2) + 's';
   const tilt = (((idx * 7) % 5) - 2) + 'deg';
   const got = it.status === 'got';
+  const id = esc(it.id);
   return `
   <div class="drop" style="--i:${ri}">
     <div class="hang" style="--dur:${dur};--delay:${delay}">
-      <svg class="clip" style="--pin:${pin};--tilt:${tilt}" aria-hidden="true"><use href="#pin"/></svg>
-      <div class="card${got ? ' got' : ''}" data-id="${esc(it.id)}" role="button" tabindex="0" aria-label="${esc(it.name.en)}">
-        <div class="face front" style="--c:${tier.c}">
+      <svg class="clip" style="--pin:${esc(pin)};--tilt:${tilt}" aria-hidden="true"><use href="#pin"/></svg>
+      <div class="card${got ? ' got' : ''}" data-id="${id}">
+        <div class="face front" style="--c:${esc(tier.c)}" role="button" tabindex="0" aria-labelledby="n-${id}" aria-expanded="false">
           <div class="price">${t(it.price)}</div>
           ${got ? `<div class="got-badge">${t(ui.got)} ✓</div>` : ''}
           ${imgHTML(it, 'imgbox', eager)}
-          <h3 class="name">${t(it.name)}</h3>
+          <h3 class="name" id="n-${id}">${t(it.name)}</h3>
           <p class="desc">${t(it.desc)}</p>
           <div class="foot"><span class="tier-lbl"><i class="tr"></i>${t(tier.short || tier.name)}</span><span class="tap">${t(ui.tap)} ↻</span></div>
         </div>
-        <div class="face back">
+        <div class="face back" inert>
           <div class="hd">${thumbHTML(it)}<div><div class="lbl">${t(ui.approx)}</div><div class="note">${t(it.note || '')}</div></div></div>
           <div class="big">${t(it.price)}</div>
           <div class="avail">${av}</div>
           <div class="where"><div class="lbl">${t(ui.where)}</div><ul>${where}</ul></div>
-          <div class="hint">${t(ui.back)} ↻</div>
+          <button type="button" class="hint">${t(ui.back)} ↻</button>
         </div>
       </div>
     </div>
@@ -134,24 +143,39 @@ function cardHTML(it, tier, idx, ri, eager) {
 
 const WIRE = `<svg class="wire" viewBox="0 0 100 36" preserveAspectRatio="none" aria-hidden="true"><path d="M0 8 Q 50 32 100 8"/><path class="hi" d="M0 8 Q 50 32 100 8"/></svg><span class="nail l"></span><span class="nail r"></span>`;
 
-function layout() {
-  if (!DATA) return;
+function cardWidth() {
+  let p = $('.cwprobe');
+  if (!p) { p = document.createElement('div'); p.className = 'cwprobe'; document.body.appendChild(p); }
+  return p.offsetWidth || 232;
+}
+function layoutKey() {
   const main = $('#tiers');
   const mobile = window.innerWidth < 720;
-  const cw = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cw')) || 232;
+  if (mobile) return { mobile, perRow: Infinity, key: 'm' };
+  const cw = cardWidth();
   const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap')) || 22;
-  const W = Math.min(window.innerWidth, 1320) - 56;
-  const perRow = mobile ? Infinity : Math.max(1, Math.floor((W + gap) / (cw + gap)));
-  const visible = DATA.items.filter(i => i.status !== 'dropped').sort((a, b) => (a.order || 0) - (b.order || 0));
+  const W = Math.min(main.clientWidth || window.innerWidth, 1320) - 56;
+  const perRow = Math.max(1, Math.floor((W + gap) / (cw + gap)));
+  return { mobile, perRow, key: 'd' + perRow };
+}
+function layout(force) {
+  if (!DATA) return;
+  const { mobile, perRow, key } = layoutKey();
+  if (!force && key === layout.key) return;   // same column count → keep flipped cards, focus and row scroll
+  layout.key = key;
+  const main = $('#tiers');
+  const visible = DATA.items.filter(i => i && i.status !== 'dropped').sort((a, b) => (a.order || 0) - (b.order || 0));
+  const known = new Set(DATA.tiers.map(tr => tr.id));
+  visible.filter(i => !known.has(i.tier)).forEach(i => console.warn('item with unknown tier skipped:', i.id, i.tier));
   let html = '', eagerLeft = 4;
   for (const tier of DATA.tiers) {
     const items = visible.filter(i => i.tier === tier.id);
     if (!items.length) continue;
     const rows = [];
     for (let i = 0; i < items.length; i += perRow) rows.push(items.slice(i, i + perRow));
-    html += `<section class="tier" id="tier-${tier.id}">
+    html += `<section class="tier" id="tier-${esc(tier.id)}">
       <div class="tier-head">
-        <h2><span class="dot" style="--c:${tier.c}"></span>${t(tier.name)}</h2>
+        <h2><span class="dot" style="--c:${esc(tier.c)}"></span>${t(tier.name)}</h2>
         <span class="range">${t(tier.range)}</span>
         <span class="count">${items.length} ${t(DATA.ui.things)}</span>
         <div class="blurb">${t(tier.blurb)}</div>
@@ -181,22 +205,27 @@ function reveal() {
 }
 window.addEventListener('scroll', reveal, { passive: true });
 window.addEventListener('resize', reveal, { passive: true });
-let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { const w = window.innerWidth; if (w !== layout.w) { layout.w = w; layout(); } }, 180); });
-layout.w = window.innerWidth;
+let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => layout(false), 180); });
 
 /* ---------- flip + tilt ---------- */
 document.addEventListener('click', (e) => {
-  const a = e.target.closest('a'); if (a) return;
+  if (e.target.closest('a')) return;
   const card = e.target.closest('.card'); if (!card) return;
   flip(card);
 });
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter' && e.key !== ' ') return;
-  const card = e.target.closest && e.target.closest('.card'); if (!card) return;
-  e.preventDefault(); flip(card);
+  if (e.target.closest && e.target.closest('a, button')) return;   // links and real buttons act on their own
+  const face = e.target.closest && e.target.closest('.face'); if (!face) return;
+  e.preventDefault(); flip(face.closest('.card'));
 });
 function flip(card) {
-  card.classList.add('anim'); card.classList.toggle('flipped');
+  card.classList.add('anim');
+  const flipped = card.classList.toggle('flipped');
+  const front = card.querySelector('.front'), back = card.querySelector('.back');
+  front.toggleAttribute('inert', flipped); back.toggleAttribute('inert', !flipped);
+  front.setAttribute('aria-expanded', flipped ? 'true' : 'false');
+  if (document.activeElement && card.contains(document.activeElement)) (flipped ? back.querySelector('.hint') : front).focus({ preventScroll: true });
   clearTimeout(card._t); card._t = setTimeout(() => card.classList.remove('anim'), 850);
 }
 if (window.matchMedia('(hover: hover)').matches) {
@@ -223,14 +252,15 @@ async function load() {
   try {
     const r = await fetch('data/items.json', { cache: 'no-cache' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    DATA = await r.json();
+    const d = await r.json();
+    if (!d || !d.site || !Array.isArray(d.tiers) || !Array.isArray(d.items)) throw new Error('bad data shape');
+    DATA = d;
+    renderSite(DATA.site);
+    renderNav(DATA.tiers);
+    layout(true);
   } catch (err) {
     main.innerHTML = `<p class="msg"><span class="l-en">Couldn't load the list. Open the link again when you're online.</span><span class="l-ru">Не получилось загрузить список. Открой ссылку ещё раз, когда появится сеть.</span></p>`;
     console.error(err);
-    return;
   }
-  renderSite(DATA.site);
-  renderNav(DATA.tiers);
-  layout();
 }
 load();
