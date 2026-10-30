@@ -24,8 +24,10 @@ const t = (v, raw) => {
 };
 const art = (k) => (ART[k] || ART.ring).replace('<svg ', '<svg width="100%" height="100%" ');
 const safeUrl = (u) => (typeof u === 'string' && /^https?:\/\//i.test(u)) ? u : null;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const MARK = { y: '✓', g: '~', n: '✗' };
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
 
 let DATA = null;   // { site, tiers, ui, items }
 
@@ -38,7 +40,16 @@ function setLang(l, save) {
     b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
   });
   if (DATA) document.title = DATA.site.title[l].replace(/<[^>]+>/g, '') + ' · ' + DATA.site.owner;
+  if (l === 'ru') preloadCyrillic();
   if (save) { try { localStorage.setItem('wl-lang', l); } catch (e) {} }
+}
+function preloadCyrillic() {
+  if (preloadCyrillic.done) return; preloadCyrillic.done = true;
+  for (const f of ['lora-cyrillic', 'lora-italic-cyrillic']) {
+    const l = document.createElement('link');
+    l.rel = 'preload'; l.as = 'font'; l.type = 'font/woff2'; l.crossOrigin = 'anonymous'; l.href = `assets/fonts/${f}.woff2`;
+    document.head.appendChild(l);
+  }
 }
 let lang = 'en';
 try { lang = localStorage.getItem('wl-lang') || ((navigator.language || '').toLowerCase().startsWith('ru') ? 'ru' : 'en'); } catch (e) {}
@@ -86,6 +97,9 @@ function renderNav(tiers) {
 }
 
 /* ---------- cards ---------- */
+const CROSS = `<svg class="cross" viewBox="0 0 100 140" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M13 15 C 22 29, 30 42, 43 60 S 70 103, 88 126"/><path pathLength="1" d="M88 13 C 75 33, 63 53, 50 72 S 24 110, 11 128"/></svg>`;
+const FX = `<div class="fx" aria-hidden="true"><i class="foil"></i><i class="glare"></i><i class="lines"></i><i class="sweep"></i></div>`;
+
 function imgHTML(it, cls, eager) {
   const photo = it.kind === 'photo';
   if (!it.image) {
@@ -115,27 +129,33 @@ function cardHTML(it, tier, idx, ri, eager) {
   const delay = (-((idx * 53) % 30) / 10).toFixed(2) + 's';
   const tilt = (((idx * 7) % 5) - 2) + 'deg';
   const got = it.status === 'got';
+  const booked = !got && !!it.booked;
   const id = esc(it.id);
   return `
   <div class="drop" style="--i:${ri}">
     <div class="hang" style="--dur:${dur};--delay:${delay}">
-      <svg class="clip" style="--pin:${esc(pin)};--tilt:${tilt}" aria-hidden="true"><use href="#pin"/></svg>
-      <div class="card${got ? ' got' : ''}" data-id="${id}">
-        <div class="face front" style="--c:${esc(tier.c)}" role="button" tabindex="0" aria-labelledby="n-${id}" aria-expanded="false">
-          <div class="price">${t(it.price)}</div>
-          ${got ? `<div class="got-badge">${t(ui.got)} ✓</div>` : ''}
-          ${imgHTML(it, 'imgbox', eager)}
-          <h3 class="name" id="n-${id}">${t(it.name)}</h3>
-          <p class="desc">${t(it.desc)}</p>
-          <div class="foot"><span class="tier-lbl"><i class="tr"></i>${t(tier.short || tier.name)}</span><span class="tap">${t(ui.tap)} ↻</span></div>
+      <div class="sway">
+        <svg class="clip" style="--pin:${esc(pin)};--tilt:${tilt}" aria-hidden="true"><use href="#pin"/></svg>
+        <div class="card${got ? ' got' : ''}${booked ? ' booked' : ''}" data-id="${id}">
+          <div class="face front" style="--c:${esc(tier.c)}" role="button" tabindex="0" aria-labelledby="n-${id}${got ? ` s-${id}` : ''}${booked ? ` b-${id}` : ''}" aria-expanded="false">
+            <div class="price">${t(it.price)}</div>
+            ${got ? `<div class="stamp" id="s-${id}">${t(ui.got)} <span aria-hidden="true">✓</span></div>` : ''}
+            ${imgHTML(it, 'imgbox', eager)}
+            <h3 class="name" id="n-${id}">${t(it.name)}</h3>
+            <p class="desc">${t(it.desc)}</p>
+            <div class="foot"><span class="tier-lbl"><i class="tr"></i>${t(tier.short || tier.name)}</span><span class="tap">${t(ui.tap)} ↻</span></div>
+            ${got ? CROSS : ''}
+          </div>
+          <div class="face back" inert>
+            ${FX}
+            <div class="hd">${thumbHTML(it)}<div><div class="lbl">${t(ui.approx)}</div><div class="note">${t(it.note || '')}</div></div></div>
+            <div class="big">${t(it.price)}</div>
+            <div class="avail">${av}</div>
+            <div class="where"><div class="lbl">${t(ui.where)}</div><ul>${where}</ul></div>
+            <div class="bfoot">${got ? `<span class="stamp">${t(ui.got)} ✓</span>` : ''}<button type="button" class="hint">${t(ui.back)} ↻</button></div>
+          </div>
         </div>
-        <div class="face back" inert>
-          <div class="hd">${thumbHTML(it)}<div><div class="lbl">${t(ui.approx)}</div><div class="note">${t(it.note || '')}</div></div></div>
-          <div class="big">${t(it.price)}</div>
-          <div class="avail">${av}</div>
-          <div class="where"><div class="lbl">${t(ui.where)}</div><ul>${where}</ul></div>
-          <button type="button" class="hint">${t(ui.back)} ↻</button>
-        </div>
+        ${booked ? `<div class="bk-tag" id="b-${id}" aria-hidden="true">${t(ui.booked)}</div>` : ''}
       </div>
     </div>
   </div>`;
@@ -183,16 +203,20 @@ function layout(force) {
       ${rows.map(r => `<div class="scroller${mobile ? '' : ' fits'}"><div class="row pre">${WIRE}${r.map((it, i) => cardHTML(it, tier, items.indexOf(it), i, eagerLeft-- > 0)).join('')}</div></div>${mobile ? `<div class="swipe">${t(DATA.ui.swipe)}</div>` : ''}`).join('')}
     </section>`;
   }
+  stopTilt(); cancelAnimationFrame(tiltRaf); tiltRaf = 0; tiltEv = null;
+  activeCard = null;
   main.innerHTML = html;
-  /* sag: cards in the middle of a wire hang lower */
+  /* sag: cards in the middle of a wire hang lower and swing a little more */
   main.querySelectorAll('.row').forEach(row => {
     const rw = row.scrollWidth;
     row.querySelectorAll('.drop').forEach(d => {
       const x = d.offsetLeft + d.offsetWidth / 2;
       const tt = Math.max(0, Math.min(1, x / rw));
       d.querySelector('.hang').style.setProperty('--sag', (48 * tt * (1 - tt)).toFixed(1));
+      d.style.setProperty('--amp', (0.85 + 1.2 * tt * (1 - tt)).toFixed(2));
     });
   });
+  bindSway();
   /* drop-in when a row scrolls into view */
   requestAnimationFrame(reveal); setTimeout(reveal, 120); setTimeout(reveal, 600);
 }
@@ -207,7 +231,53 @@ window.addEventListener('scroll', reveal, { passive: true });
 window.addEventListener('resize', reveal, { passive: true });
 let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => layout(false), 180); });
 
-/* ---------- flip + tilt ---------- */
+/* ---------- wire: a damped spring per row, kicked by page scroll and by swiping a row ---------- */
+const SW = { rows: [], raf: 0, prev: 0, lastY: window.scrollY, lastT: 0, io: null };
+const K = 60, C = 7, VMAX = 60, AMAX = 5;     // stiffness, damping, max deg/s, max deg
+function bindSway() {
+  if (SW.io) SW.io.disconnect();
+  SW.rows = [...document.querySelectorAll('.row')].map(el => {
+    const sc = el.parentElement;
+    const r = { el, sc, sways: [...el.querySelectorAll('.sway')], a: 0, v: 0, k: '0.00', vis: false, lastX: sc.scrollLeft, lastT: 0 };
+    if (!sc.classList.contains('fits')) sc.addEventListener('scroll', () => {
+      const now = performance.now(), dt = Math.max(16, now - (r.lastT || now - 16)) / 1000;
+      const vx = (sc.scrollLeft - r.lastX) / dt; r.lastX = sc.scrollLeft; r.lastT = now;
+      kick(r, -vx * 0.02);                     // cards lag behind the hand
+    }, { passive: true });
+    return r;
+  });
+  if ('IntersectionObserver' in window) {
+    SW.io = new IntersectionObserver(es => es.forEach(e => { const r = SW.rows.find(x => x.el === e.target); if (r) r.vis = e.isIntersecting; }), { rootMargin: '120px 0px' });
+    SW.rows.forEach(r => SW.io.observe(r.el));
+  } else SW.rows.forEach(r => { r.vis = true; });
+}
+function kick(r, dv) {
+  if (reduced.matches) return;
+  r.v = clamp(r.v + clamp(dv, -VMAX, VMAX), -VMAX * 1.5, VMAX * 1.5);
+  r.el.classList.add('swinging');
+  if (!SW.raf) { SW.prev = 0; SW.raf = requestAnimationFrame(swayStep); }
+}
+function swayStep(now) {
+  const dt = Math.min(0.05, (now - (SW.prev || now - 16)) / 1000); SW.prev = now;
+  let alive = false;
+  for (const r of SW.rows) {
+    r.v += (-K * r.a - C * r.v) * dt; r.a = clamp(r.a + r.v * dt, -AMAX, AMAX);
+    if (Math.abs(r.a) > 0.02 || Math.abs(r.v) > 0.3) alive = true;
+    else if (r.a || r.v) { r.a = 0; r.v = 0; r.el.classList.remove('swinging'); }
+    const k = r.a.toFixed(2);
+    if (k !== r.k) { r.k = k; for (const el of r.sways) el.style.setProperty('--kick', k); }
+  }
+  SW.raf = alive ? requestAnimationFrame(swayStep) : 0;
+}
+window.addEventListener('scroll', () => {
+  const now = performance.now(), dt = Math.max(16, now - (SW.lastT || now - 16)) / 1000;
+  const vy = (window.scrollY - SW.lastY) / dt; SW.lastY = window.scrollY; SW.lastT = now;
+  if (Math.abs(vy) < 60) return;
+  for (const r of SW.rows) if (r.vis) kick(r, vy * 0.012);
+}, { passive: true });
+
+/* ---------- flip ---------- */
+let activeCard = null;
 document.addEventListener('click', (e) => {
   if (e.target.closest('a')) return;
   const card = e.target.closest('.card'); if (!card) return;
@@ -226,24 +296,101 @@ function flip(card) {
   front.toggleAttribute('inert', flipped); back.toggleAttribute('inert', !flipped);
   front.setAttribute('aria-expanded', flipped ? 'true' : 'false');
   if (document.activeElement && card.contains(document.activeElement)) (flipped ? back.querySelector('.hint') : front).focus({ preventScroll: true });
+  if (flipped) {
+    if (activeCard && activeCard !== card) { activeCard.classList.remove('active'); release(activeCard); }
+    activeCard = card; card.classList.add('active');
+    clearTimeout(card._r); card.classList.remove('release', 'live');
+    tiltBase = null; startTilt();
+  } else {
+    card.classList.remove('active');
+    release(card);
+    if (activeCard === card) { activeCard = document.querySelector('.card.flipped'); if (activeCard) activeCard.classList.add('active'); }
+    if (!activeCard) stopTilt();
+  }
   clearTimeout(card._t); card._t = setTimeout(() => card.classList.remove('anim'), 850);
 }
-if (window.matchMedia('(hover: hover)').matches) {
+
+/* ---------- holo: light follows the pointer (desktop) or the phone's tilt; springs back when let go ---------- */
+function setPointer(card, x, y) {          // x, y: offset from the card centre, -0.5 … 0.5
+  x = clamp(x, -0.5, 0.5); y = clamp(y, -0.5, 0.5);
+  const s = card.style;
+  s.setProperty('--px', x.toFixed(3)); s.setProperty('--py', y.toFixed(3));
+  s.setProperty('--mx', (50 + x * 100).toFixed(1) + '%'); s.setProperty('--my', (50 + y * 100).toFixed(1) + '%');
+  s.setProperty('--d', clamp(Math.hypot(x, y) * 2, 0, 1).toFixed(3));
+  s.setProperty('--ry', (x * 16).toFixed(2) + 'deg');
+  s.setProperty('--rx', (-y * 12).toFixed(2) + 'deg');
+}
+function engage(card) { clearTimeout(card._r); card.classList.remove('release'); card.classList.add('live'); }
+function release(card) {
+  card.classList.add('release');
+  setPointer(card, 0, 0);
+  clearTimeout(card._r); card._r = setTimeout(() => card.classList.remove('release', 'live'), 850);
+}
+if (finePointer.matches && !reduced.matches) {
   document.addEventListener('pointermove', (e) => {
+    if (e.pointerType === 'touch') return;
     const card = e.target.closest && e.target.closest('.card'); if (!card) return;
+    engage(card);
     const r = card.getBoundingClientRect();
-    const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
-    const flipped = card.classList.contains('flipped');
-    card.style.setProperty('--ry', ((px - .5) * (flipped ? -14 : 14)).toFixed(2) + 'deg');
-    card.style.setProperty('--rx', ((.5 - py) * 10).toFixed(2) + 'deg');
-    card.style.setProperty('--mx', (px * 100).toFixed(1) + '%');
-    card.style.setProperty('--my', (py * 100).toFixed(1) + '%');
-  });
+    setPointer(card, (e.clientX - r.left) / r.width - 0.5, (e.clientY - r.top) / r.height - 0.5);
+  }, { passive: true });
   document.addEventListener('pointerout', (e) => {
     const card = e.target.closest && e.target.closest('.card'); if (!card) return;
     if (e.relatedTarget && card.contains(e.relatedTarget)) return;
-    card.style.setProperty('--ry', '0deg'); card.style.setProperty('--rx', '0deg');
+    release(card);
   });
+}
+
+/* phones: gyroscope. Android: no prompt. iPhone: Safari asks for motion access — only after the guest taps
+   "Turn on" in a one-time pill, never on a card tap. Cosmetic only; the foil drifts on its own without it. */
+let tiltOn = false, tiltAllowed = false, tiltBase = null, tiltEv = null, tiltRaf = 0, tiltHinted = false, tiltOffered = false;
+function startTilt() {
+  if (tiltOn || reduced.matches || finePointer.matches || typeof DeviceOrientationEvent === 'undefined') return;
+  if (typeof DeviceOrientationEvent.requestPermission !== 'function' || tiltAllowed) return listenTilt();
+  offerTilt();
+}
+function offerTilt() {
+  let asked = null; try { asked = sessionStorage.getItem('wl-gyro'); } catch (e) {}
+  if (asked || tiltOffered || !DATA || !DATA.ui.tiltAsk) return;
+  tiltOffered = true;
+  const el = document.createElement('div');
+  el.className = 'toast'; el.setAttribute('role', 'status');
+  el.innerHTML = `<span>${t(DATA.ui.tiltAsk)}</span><button type="button">${t(DATA.ui.tiltOn)}</button>`;
+  app.appendChild(el);
+  let closed = false;
+  const close = () => { if (closed) return; closed = true; el.classList.add('out'); setTimeout(() => el.remove(), 300); };
+  el.querySelector('button').addEventListener('click', () => {
+    DeviceOrientationEvent.requestPermission().then(r => {      // called right in the tap, as Safari requires
+      try { sessionStorage.setItem('wl-gyro', r); } catch (e) {}
+      if (r === 'granted') { tiltAllowed = true; if (activeCard) listenTilt(); }
+    }).catch(() => {}).finally(close);
+  });
+  setTimeout(close, 9000);
+}
+function listenTilt() { if (tiltOn) return; tiltOn = true; window.addEventListener('deviceorientation', onTilt, { passive: true }); }
+function stopTilt() { if (!tiltOn) return; tiltOn = false; tiltBase = null; window.removeEventListener('deviceorientation', onTilt); }
+function onTilt(e) {
+  if (e.gamma == null || e.beta == null) return;
+  tiltEv = e; if (!tiltRaf) tiltRaf = requestAnimationFrame(applyTilt);
+}
+function applyTilt() {
+  tiltRaf = 0;
+  const card = activeCard, e = tiltEv;
+  if (!card || !card.classList.contains('flipped') || !e) { tiltBase = null; return; }
+  const ang = (screen.orientation && typeof screen.orientation.angle === 'number') ? screen.orientation.angle : (window.orientation || 0);
+  let x = e.gamma, y = e.beta;
+  if (ang === 90) { x = e.beta; y = -e.gamma; }
+  else if (ang === -90 || ang === 270) { x = -e.beta; y = e.gamma; }
+  else if (ang === 180) { x = -e.gamma; y = -e.beta; }
+  if (!tiltBase) { tiltBase = { x, y }; hintTilt(card); return; }   // relative to how the phone was held at the flip
+  engage(card);
+  setPointer(card, (x - tiltBase.x) / 32, (y - tiltBase.y) / 36);  // ±16° / ±18° of tilt = full travel
+}
+function hintTilt(card) {
+  if (tiltHinted || !DATA || !DATA.ui.tilt) return; tiltHinted = true;
+  const back = card.querySelector('.back');
+  back.insertAdjacentHTML('beforeend', `<span class="tilt-hint">${t(DATA.ui.tilt)}</span>`);
+  setTimeout(() => { const h = back.querySelector('.tilt-hint'); if (h) h.remove(); }, 3000);
 }
 
 /* ---------- data ---------- */

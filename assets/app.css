@@ -1,4 +1,20 @@
 /* Wishlist 2026 — v2 styles. Cream paper, cards on a wire. */
+/* Self-hosted fonts (SIL OFL, see fonts/OFL.txt). Cyrillic files load only when Russian text is on screen. */
+@font-face { font-family: 'Lora'; font-style: normal; font-weight: 400 700; font-display: swap; src: url(fonts/lora-latin.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Lora'; font-style: normal; font-weight: 400 700; font-display: swap; src: url(fonts/lora-cyrillic.woff2) format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Lora'; font-style: italic; font-weight: 400 700; font-display: swap; src: url(fonts/lora-italic-latin.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Lora'; font-style: italic; font-weight: 400 700; font-display: swap; src: url(fonts/lora-italic-cyrillic.woff2) format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Marck Script'; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/marck-script-latin.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Marck Script'; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/marck-script-cyrillic.woff2) format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+
+/* Registered so the holo can transition them (inertia). Safari 16.4+, Chrome 85+, Firefox 128+. */
+@property --mx { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
+@property --my { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
+@property --px { syntax: '<number>'; inherits: true; initial-value: 0; }
+@property --py { syntax: '<number>'; inherits: true; initial-value: 0; }
+@property --d { syntax: '<number>'; inherits: true; initial-value: 0; }
+@property --kick { syntax: '<number>'; inherits: false; initial-value: 0; }
+
 :root {
   color-scheme: light;
   --cream: #f4efe4;
@@ -11,7 +27,10 @@
   --t-normal: #8fb08a;
   --t-rich: #d99d85;
   --t-god: #cfa74a;
-  --serif: Georgia, "Iowan Old Style", "Palatino Linotype", "Noto Serif", "Times New Roman", serif;
+  --serif: "Lora", Georgia, "Iowan Old Style", "Palatino Linotype", "Noto Serif", "Times New Roman", serif;
+  --hand: "Marck Script", "Lora", cursive;
+  --ink-red: #b8322a;
+  --spring: cubic-bezier(.34, 1.45, .55, 1);
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --cw: 232px;
   --gap: 22px;
@@ -83,17 +102,22 @@ h1 i { font-style: italic; color: #8a6d3b; }
 .drop { scroll-snap-align: center; flex: none; width: var(--cw); }
 .row.pre .drop { opacity: 0; }
 .row.in .drop { animation: dropin 1s cubic-bezier(.2,1.1,.3,1) both; animation-delay: calc(var(--i) * 80ms); }
-.hang { position: relative; padding-top: 28px; transform-origin: 50% 0; animation: swing var(--dur, 3.6s) ease-in-out var(--delay, 0s) infinite alternate; perspective: 1200px; -webkit-perspective: 1200px; margin-top: calc(var(--sag, 0) * 1px); }
+.hang { position: relative; transform-origin: 50% 0; animation: swing var(--dur, 3.6s) ease-in-out var(--delay, 0s) infinite alternate; margin-top: calc(var(--sag, 0) * 1px); }
+/* .sway takes the scroll/swipe kick (JS spring); .hang keeps the idle CSS swing, so the two never fight */
+.sway { position: relative; padding-top: 28px; transform-origin: 50% 0; transform: rotate(calc(var(--kick, 0) * var(--amp, 1) * 1deg)); perspective: 1200px; -webkit-perspective: 1200px; }
+.row.swinging .sway { will-change: transform; }
 .clip { position: absolute; top: -14px; left: 50%; width: 28px; height: 56px; transform: translateX(-50%) rotate(var(--tilt, 0deg)); z-index: 3; color: var(--pin, #c9a06b); filter: drop-shadow(0 2px 2px rgba(0,0,0,.18)); }
 
 .card {
   position: relative; width: var(--cw); height: calc(var(--cw) * 1.42);
   transform-style: preserve-3d; -webkit-transform-style: preserve-3d;
   transform: rotateX(var(--rx, 0deg)) rotateY(calc(var(--f, 0deg) + var(--ry, 0deg)));
-  transition: transform .25s ease-out; cursor: pointer;
+  transition: transform .25s ease-out, --mx .12s linear, --my .12s linear, --px .12s linear, --py .12s linear, --d .12s linear; cursor: pointer;
 }
 .card .face:focus { outline: none; }
-.card.anim { transition: transform .8s cubic-bezier(.3,.7,.2,1); }
+/* pointer/tilt let go: settle back with a spring */
+.card.release { transition: transform .8s var(--spring), --mx .8s var(--spring), --my .8s var(--spring), --px .8s var(--spring), --py .8s var(--spring), --d .8s var(--spring); }
+.card.anim { transition: transform .8s cubic-bezier(.3,.7,.2,1), --mx .12s linear, --my .12s linear, --px .12s linear, --py .12s linear, --d .12s linear; }
 .card.flipped { --f: 180deg; }
 .front:focus-visible, .back:focus-visible { box-shadow: 0 0 0 3px #8fb08a, 0 18px 30px -16px rgba(40,30,10,.45); }
 .back .hint:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
@@ -102,14 +126,16 @@ h1 i { font-style: italic; color: #8a6d3b; }
   overflow: hidden; display: flex; flex-direction: column; transform: translateZ(1px);
 }
 .front {
-  background: var(--paper); border: 1px solid #e6dfcf;
-  box-shadow: 0 18px 30px -16px rgba(40,30,10,.45), 0 2px 0 rgba(0,0,0,.02);
+  background: var(--paper) url(paper.svg); border: 1px solid #e6dfcf;
+  box-shadow: 0 18px 30px -16px rgba(40,30,10,.45), 0 2px 0 rgba(0,0,0,.02), inset 0 -2px 0 rgba(90,70,40,.06);
   padding: 22px 16px 14px;
 }
 .front::before { content: ""; position: absolute; top: 10px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--cream-2); box-shadow: inset 0 1px 2px rgba(0,0,0,.18); }
-.front::after { /* sheen that follows the pointer on desktop */
-  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: var(--sh, 0); transition: opacity .3s;
-  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,.55), rgba(255,255,255,0) 60%);
+@media (hover: hover) and (pointer: fine) {
+  .front::after { /* sheen that follows the pointer on desktop */
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: var(--sh, 0); transition: opacity .3s;
+    background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,.55), rgba(255,255,255,0) 60%);
+  }
 }
 .price {
   position: absolute; top: 16px; right: 10px; transform: rotate(6deg); z-index: 2;
@@ -129,11 +155,6 @@ h1 i { font-style: italic; color: #8a6d3b; }
 .foot .tr { width: 8px; height: 8px; border-radius: 50%; background: var(--c); display: inline-block; margin-right: 6px; vertical-align: -1px; }
 .foot .tap { flex: none; opacity: .9; }
 
-/* got it (minimal for now; doodle cross comes with the look phase) */
-.card.got .name { text-decoration: line-through; text-decoration-thickness: 2px; color: var(--muted); }
-.card.got .imgbox { filter: saturate(.3); opacity: .7; }
-.got-badge { position: absolute; top: 16px; left: 10px; z-index: 2; transform: rotate(-8deg); font: 700 11px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: #3a6b45; border: 2px solid #3a6b45; border-radius: 6px; padding: 5px 7px; background: rgba(255,253,248,.85); }
-
 /* ---------- holographic back ---------- */
 .back {
   transform: rotateY(180deg) translateZ(1px);
@@ -141,23 +162,15 @@ h1 i { font-style: italic; color: #8a6d3b; }
   color: #fff; border: 1px solid rgba(255,255,255,.12);
   box-shadow: 0 18px 30px -16px rgba(40,30,10,.55);
   padding: 18px 16px 14px;
-}
-.back::before {
-  content: ""; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen; opacity: .55;
-  background: linear-gradient(115deg, rgba(255,255,255,0) 15%, rgba(255,80,120,.55) 30%, rgba(255,210,80,.55) 40%, rgba(90,255,170,.55) 50%, rgba(80,190,255,.55) 60%, rgba(190,120,255,.55) 70%, rgba(255,255,255,0) 85%);
-  background-size: 300% 300%; animation: holo 7s ease-in-out infinite alternate;
-}
-.back::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
-  background: radial-gradient(320px circle at var(--mx, 50%) var(--my, 40%), rgba(255,255,255,.35), rgba(255,255,255,0) 60%),
-              repeating-radial-gradient(circle at 0 0, rgba(255,255,255,.05) 0 1px, transparent 1px 3px);
+  text-shadow: 0 1px 2px rgba(0,0,0,.45);
 }
 .back > * { position: relative; z-index: 1; min-width: 0; }
-.back .lbl { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; opacity: .7; }
+.back .lbl { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
 .back .hd { display: flex; gap: 10px; align-items: center; }
-.back .hd > div { min-width: 0; }
+.back .hd > div { min-width: 0; background: rgba(16,12,24,.6); border-radius: 8px; padding: 4px 7px; }
+.where > .lbl { display: inline-block; background: rgba(16,12,24,.6); border-radius: 6px; padding: 2px 6px; }
 .back .big { font-family: var(--serif); font-size: clamp(22px, calc(var(--cw) * .118), 28px); line-height: 1.05; margin: 10px 0 0; text-shadow: 0 2px 10px rgba(0,0,0,.35); letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.back .note { font-size: 11.5px; opacity: .85; line-height: 1.3; margin-top: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.back .note { font-size: 11.5px; line-height: 1.3; margin-top: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .back .thumb { flex: none; width: 52px; height: 52px; border-radius: 12px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18); display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .back .thumb img, .back .thumb svg { max-width: 84%; max-height: 84%; width: auto; height: auto; }
 .back .thumb.photo img { max-width: 100%; max-height: 100%; width: 100%; height: 100%; object-fit: cover; }
@@ -165,16 +178,68 @@ h1 i { font-style: italic; color: #8a6d3b; }
 .avail { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 12px 0 0; }
 .avail > span { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 2px; border-radius: 10px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); line-height: 1.1; overflow: hidden; }
 .avail > span b { font-size: 15px; font-weight: 700; }
-.avail > span small { display: block; max-width: 100%; opacity: .75; font-size: clamp(7.5px, calc(var(--cw) * .039), 9.5px); letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; overflow: hidden; }
-.avail > span.y { background: rgba(120,230,160,.18); border-color: rgba(120,230,160,.35); }
-.avail > span.g { background: rgba(255,210,90,.16); border-color: rgba(255,210,90,.35); }
-.avail > span.n { background: rgba(255,110,110,.14); border-color: rgba(255,110,110,.3); opacity: .8; }
+.avail > span small { display: block; max-width: 100%; font-size: clamp(7.5px, calc(var(--cw) * .039), 9.5px); letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; overflow: hidden; }
+.avail > span.y { background: linear-gradient(rgba(120,230,160,.2), rgba(120,230,160,.2)), rgba(16,12,24,.62); border-color: rgba(120,230,160,.38); }
+.avail > span.g { background: linear-gradient(rgba(255,210,90,.18), rgba(255,210,90,.18)), rgba(16,12,24,.62); border-color: rgba(255,210,90,.38); }
+.avail > span.n { background: linear-gradient(rgba(255,110,110,.16), rgba(255,110,110,.16)), rgba(16,12,24,.62); border-color: rgba(255,110,110,.32); }
 .where { margin: 12px 0 0; min-height: 0; }
 .where ul { list-style: none; padding: 0; margin: 4px 0 0; display: flex; flex-wrap: wrap; gap: 5px; }
 .where li { min-width: 0; max-width: 100%; }
-.where li a, .where li span { display: inline-block; max-width: 100%; overflow-wrap: anywhere; font-size: 11.5px; line-height: 1.25; padding: 6px 10px; min-height: 28px; border-radius: 999px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18); color: #fff; text-decoration: none; }
-.where li a:hover { background: rgba(255,255,255,.22); }
-.back .hint { margin-top: auto; padding: 8px 0 0; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; opacity: .7; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; appearance: none; background: none; border: 0; color: inherit; font-family: inherit; cursor: pointer; min-height: 28px; align-self: flex-end; max-width: 100%; }
+.where li a, .where li span { display: inline-block; max-width: 100%; overflow-wrap: anywhere; font-size: 11.5px; line-height: 1.25; padding: 6px 10px; min-height: 28px; border-radius: 999px; background: rgba(16,12,24,.6); border: 1px solid rgba(255,255,255,.22); color: #fff; text-decoration: none; }
+.where li a:hover { background: rgba(16,12,24,.78); border-color: rgba(255,255,255,.55); }
+.back .hint { margin-top: auto; padding: 6px 10px; font-size: 10px; line-height: 1.25; letter-spacing: .08em; text-transform: uppercase; text-align: right; white-space: normal; appearance: none; background: rgba(16,12,24,.6); border: 0; border-radius: 999px; color: inherit; font-family: inherit; cursor: pointer; min-height: 28px; align-self: flex-end; max-width: 100%; }
+
+/* ---------- holo foil (lives only on a flipped card) ---------- */
+.back > .fx { position: absolute; inset: 0; z-index: auto; display: none; pointer-events: none; border-radius: inherit; }
+.card.flipped .back > .fx, .card.anim .back > .fx { display: block; }
+.fx > i { position: absolute; inset: 0; display: block; border-radius: inherit; }
+.fx .foil {   /* sparkle grain over a rainbow, lit by a light that follows the pointer / tilt */
+  background-image:
+    url(../img/sparkle.webp),
+    repeating-linear-gradient(112deg, hsl(2 100% 73%) 0%, hsl(53 100% 69%) 6%, hsl(93 100% 69%) 12%, hsl(176 100% 76%) 18%, hsl(228 100% 74%) 24%, hsl(283 100% 73%) 30%, hsl(2 100% 73%) 36%),
+    radial-gradient(farthest-corner circle at var(--mx) var(--my), #fff 0%, #8a8a8a 36%, #000 100%);
+  background-size: 128px 128px, 300% 300%, 100% 100%;
+  background-position: calc(var(--px) * -40px) calc(var(--py) * -40px), calc(50% + var(--px) * 70%) calc(50% + var(--py) * 70%), 0 0;
+  background-blend-mode: overlay, multiply, normal;
+  mix-blend-mode: color-dodge; opacity: .78;
+}
+.fx .glare { background: radial-gradient(farthest-corner circle at var(--mx) var(--my), rgb(255 255 255 / .75) 0%, rgb(255 255 255 / .2) 24%, rgb(0 0 0 / .35) 88%); mix-blend-mode: overlay; opacity: calc(.32 + var(--d) * .45); }
+.fx .lines { background: repeating-linear-gradient(-55deg, rgb(255 255 255 / .07) 0 1px, transparent 1px 5px); background-position: calc(var(--px) * 14px) 0; }
+.fx .sweep { background: linear-gradient(100deg, transparent 40%, rgb(255 255 255 / .16) 50%, transparent 60%); transform: translateX(-130%); animation: sweep 7s linear 1s infinite; }
+/* nobody touching it: the light drifts on its own, so the foil is alive on any phone */
+.card.flipped.active:not(.live) { animation: drift 7s ease-in-out infinite alternate; }
+.tilt-hint { position: absolute; z-index: 2; top: 10px; left: 50%; transform: translateX(-50%); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; padding: 5px 10px; border-radius: 999px; background: rgba(16,12,24,.6); border: 1px solid rgba(255,255,255,.25); animation: hint 2.8s ease both; pointer-events: none; }
+
+/* ---------- back footer: optional stamp + flip-back button ---------- */
+.bfoot { margin-top: auto; padding-top: 6px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 6px 8px; min-width: 0; }
+.bfoot .hint { margin-top: 0; margin-left: auto; }
+
+/* ---------- got it: card stays, crossed out by hand ---------- */
+.card.got .imgbox img, .card.got .imgbox svg { filter: grayscale(.85) contrast(.92); opacity: .7; }
+.card.got .name { color: var(--muted); text-decoration: line-through; text-decoration-thickness: .12em; text-decoration-color: var(--ink-red); text-decoration-skip-ink: none; }
+.card.got .price { opacity: .55; }
+.cross { position: absolute; left: 8%; top: 9%; width: 84%; height: 78%; z-index: 3; pointer-events: none; overflow: visible; }
+.cross path { fill: none; stroke: var(--ink-red); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; opacity: .82; stroke-dasharray: 1 2; stroke-dashoffset: 1; }
+.row.in .card.got .cross path { animation: draw .5s cubic-bezier(.3,.1,.3,1) forwards; animation-delay: calc(var(--i, 0) * 80ms + .9s); }
+.row.in .card.got .cross path + path { animation-delay: calc(var(--i, 0) * 80ms + 1.3s); }
+.stamp { font: 400 19px/1 var(--hand); color: var(--ink-red); border: 2.5px solid currentColor; border-radius: 10px; padding: 5px 10px 4px; white-space: nowrap; letter-spacing: .01em; text-shadow: none; background: rgba(255,250,240,.88); }
+.front .stamp { position: absolute; z-index: 4; top: 18px; left: 12px; transform: rotate(-11deg); }
+.back .stamp { flex: none; transform: rotate(-7deg); font-size: 16px; padding: 4px 9px 3px; }
+
+/* ---------- booked: paper tag hanging from the pin (outside the flip, so both faces show it) ---------- */
+.bk-tag { position: absolute; z-index: 4; top: 22px; right: calc(50% + 6px); transform: rotate(-9deg); transform-origin: 100% 0;
+  color: #5a4a1a; font: 400 17px/1 var(--hand); padding: 6px 17px 5px 11px; white-space: nowrap; filter: drop-shadow(0 2px 2px rgba(40,30,10,.25)); }
+.bk-tag::before { content: ""; position: absolute; inset: 0; z-index: -1; background: #f7edd0; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%); }
+.bk-tag::after { content: ""; position: absolute; right: 6px; top: 50%; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%; background: var(--cream); box-shadow: inset 0 0 0 1px #d8c98e; }
+.card.got ~ .bk-tag { display: none; }
+
+/* ---------- one-time offer to turn on tilt (iPhone asks for motion access; only after a tap here) ---------- */
+.toast { position: fixed; z-index: 50; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px; width: max-content; max-width: calc(100% - 24px); padding: 6px 6px 6px 16px; border-radius: 999px;
+  background: rgba(34,29,23,.94); color: #fffdf8; font-size: 13.5px; line-height: 1.3; box-shadow: 0 10px 28px rgba(40,30,10,.32); animation: toast-in .4s var(--spring); }
+.toast button { flex: none; appearance: none; border: 0; border-radius: 999px; background: #fffdf8; color: var(--ink); font: 600 14px/1 var(--sans); padding: 0 18px; min-height: 44px; cursor: pointer; }
+.toast.out { opacity: 0; transform: translate(-50%, 10px); transition: opacity .25s, transform .25s; }
+@media (prefers-contrast: more) { .back > .fx { display: none !important; } }
 
 /* ---------- footer ---------- */
 footer { max-width: 760px; margin: 30px auto 40px; padding: 0 22px calc(env(safe-area-inset-bottom) + 0px); text-align: center; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
@@ -195,11 +260,20 @@ footer .bar { width: 46px; height: 1px; background: var(--line); margin: 0 auto 
 @keyframes dropin { 0% { transform: translateY(-120%) rotate(-3deg); opacity: 0; } 55% { opacity: 1; } 75% { transform: translateY(5%) rotate(1deg); } 100% { transform: translateY(0) rotate(0); opacity: 1; } }
 @keyframes rise { from { transform: translateY(40px) rotate(4deg); opacity: 0; } to { transform: translateY(0) rotate(0); opacity: 1; } }
 @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@keyframes holo { from { background-position: 0% 0%; } to { background-position: 100% 100%; } }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes sweep { 0% { transform: translateX(-130%); } 24%, 100% { transform: translateX(130%); } }
+@keyframes drift { 0% { --mx: 34%; --my: 30%; --px: -.16; --py: -.2; --d: .35; } 50% { --mx: 62%; --my: 46%; --px: .12; --py: -.04; --d: .2; } 100% { --mx: 46%; --my: 72%; --px: -.04; --py: .22; --d: .4; } }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 14px); } }
+@keyframes hint { 0% { opacity: 0; transform: translate(-50%, -4px); } 12%, 78% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
+@supports (transition-timing-function: linear(0, 1)) {
+  :root { --spring: linear(0, 0.075, 0.243, 0.44, 0.625, 0.779, 0.894, 0.973, 1.02, 1.043, 1.05, 1.047, 1.039, 1.029, 1.02, 1.012, 1.006, 1.002, 0.999, 0.998, 0.998, 0.998, 0.998, 0.998, 1); }
+}
 @media (prefers-reduced-motion: reduce) {
-  .hang, .row.in .drop, h1 .ch, .back::before, .tag, .swash, .tiernav, .legend { animation: none !important; }
+  .hang, .row.in .drop, h1 .ch, .tag, .swash, .tiernav, .legend, .card.flipped, .fx .sweep, .tilt-hint, .toast { animation: none !important; }
   .row.pre .drop { opacity: 1; }
-  .card, .card.anim { transition: none !important; }
+  .card, .card.anim, .card.release { transition: none !important; }
+  .sway { transform: none !important; }
+  .card.got .cross path { animation: none !important; stroke-dashoffset: 0; }
 }
 @media (max-width: 719px) {
   :root { --cw: clamp(236px, 68vw, 256px); --gap: 16px; }

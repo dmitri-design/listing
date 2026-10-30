@@ -139,7 +139,7 @@
     },
     "booked": {
       "en": "booked",
-      "ru": "забронировано"
+      "ru": "занято"
     },
     "loading": {
       "en": "loading the wire…",
@@ -148,6 +148,18 @@
     "offline": {
       "en": "Couldn't load the list. Open the link again when you're online.",
       "ru": "Не получилось загрузить список. Открой ссылку ещё раз, когда появится сеть."
+    },
+    "tilt": {
+      "en": "tilt your phone ✦",
+      "ru": "наклони телефон ✦"
+    },
+    "tiltAsk": {
+      "en": "✦ Tilt your phone to make the foil shine",
+      "ru": "✦ Наклони телефон — фольга заиграет"
+    },
+    "tiltOn": {
+      "en": "Turn on",
+      "ru": "Включить"
     }
   },
   "items": [
