@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wishlist · admin</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#f4efe4">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Wishlist admin">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23221d17'/%3E%3Cpath d='M6 20 Q32 34 58 20' stroke='%23f4efe4' stroke-width='3' fill='none'/%3E%3Crect x='20' y='24' width='24' height='32' rx='4' fill='%23fffdf8'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23221d17'/%3E%3Cpath d='M6 20 Q32 34 58 20' stroke='%23f4efe4' stroke-width='3' fill='none'/%3E%3Crect x='20' y='24' width='24' height='32' rx='4' fill='%23fffdf8'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/admin.css">
+</head>
+<body>
+<div id="adm">
+  <header class="bar">
+    <h1>Wishlist <span>admin</span></h1>
+    <a class="open" href="./" target="_blank" rel="noopener">Open page ↗</a>
+  </header>
+
+  <section id="login" class="panel" hidden>
+    <p class="lead">Owner only. Paste the admin password once; this phone remembers it.</p>
+    <form id="loginForm" autocomplete="off">
+      <label class="fld"><span>Admin password</span><input id="tokenIn" type="password" inputmode="text" autocomplete="current-password" enterkeyhint="go" required></label>
+      <p class="err" id="loginErr" role="alert" hidden></p>
+      <button type="submit" class="btn primary" id="loginBtn">Sign in</button>
+    </form>
+    <p class="help">It lives in <code>admin.token</code> next to the project after <code>node tools/deploy-api.mjs</code>.</p>
+  </section>
+
+  <section id="noapi" class="panel" hidden>
+    <p class="lead">The API isn't deployed yet, so there is nothing to edit here.</p>
+    <p class="help">On the Mac: <code>npx wrangler login</code>, then <code>node tools/deploy-api.mjs</code>. It seeds the list, saves the admin password and writes the API address into <code>data/items.json</code>. Commit, push, come back.</p>
+  </section>
+
+  <section id="seed" class="panel" hidden>
+    <p class="lead">The API is up but holds no list yet.</p>
+    <button type="button" class="btn primary" id="seedBtn">Seed it from the repo's items.json</button>
+  </section>
+
+  <main id="app" hidden>
+    <nav class="seg" role="tablist" aria-label="Sections">
+      <button type="button" role="tab" data-view="items" aria-selected="true">Items</button>
+      <button type="button" role="tab" data-view="bookings" aria-selected="false">Bookings <b id="bkCount" hidden></b></button>
+      <button type="button" role="tab" data-view="texts" aria-selected="false">Texts</button>
+    </nav>
+
+    <section id="view-items" class="view" role="tabpanel"></section>
+
+    <section id="view-bookings" class="view" role="tabpanel" hidden>
+      <div class="rowhead"><span id="bkTitle">Bookings</span><label class="chk"><input type="checkbox" id="hideNames"> <span>hide names (no spoilers)</span></label></div>
+      <ul class="list" id="bkList"></ul>
+    </section>
+
+    <section id="view-texts" class="view" role="tabpanel" hidden>
+      <form id="textsForm" class="form">
+        <div class="pair"><label class="fld"><span>Title · EN</span><input name="title.en" type="text"></label><label class="fld"><span>Title · RU</span><input name="title.ru" type="text" lang="ru"></label></div>
+        <div class="pair"><label class="fld"><span>Line above the title · EN</span><input name="brand.en" type="text"></label><label class="fld"><span>· RU</span><input name="brand.ru" type="text" lang="ru"></label></div>
+        <label class="fld"><span>Tagline · EN</span><textarea name="tagline.en" rows="2"></textarea></label>
+        <label class="fld"><span>Tagline · RU</span><textarea name="tagline.ru" rows="2" lang="ru"></textarea></label>
+        <label class="fld"><span>Footer · EN</span><textarea name="footer.en" rows="2"></textarea></label>
+        <label class="fld"><span>Footer · RU</span><textarea name="footer.ru" rows="2" lang="ru"></textarea></label>
+        <label class="fld"><span>Thank-you note on "got it" cards · EN</span><textarea name="ui.gotNote.en" rows="3"></textarea></label>
+        <label class="fld"><span>Thank-you note · RU</span><textarea name="ui.gotNote.ru" rows="3" lang="ru"></textarea></label>
+        <div class="pair"><label class="fld"><span>Signature · EN</span><input name="ui.gotSign.en" type="text"></label><label class="fld"><span>· RU</span><input name="ui.gotSign.ru" type="text" lang="ru"></label></div>
+        <p class="help">Tier names and the small UI words live in the JSON; ask Claude Code if you want them changed.</p>
+        <div class="actions"><button type="submit" class="btn primary">Save texts</button></div>
+      </form>
+    </section>
+
+    <footer class="tools">
+      <button type="button" class="btn ghost" id="exportBtn">Export JSON</button>
+      <button type="button" class="btn ghost" id="reloadBtn">Reload</button>
+      <button type="button" class="btn ghost danger" id="logoutBtn">Sign out</button>
+    </footer>
+  </main>
+
+  <div class="fab" id="fab" hidden><button type="button" class="btn primary big" id="addBtn">＋ Add item</button></div>
+
+  <dialog id="editor" class="sheet" aria-labelledby="edTitle">
+    <form id="editForm" class="sheet-in" method="dialog" novalidate>
+      <div class="sheet-top"><button type="button" class="link" id="edCancel">Cancel</button><h2 id="edTitle">Edit item</h2><button type="submit" class="link strong" id="edSave">Save</button></div>
+      <div class="sheet-body">
+        <div class="photo">
+          <div class="photo-box" id="photoBox"></div>
+          <div class="photo-acts">
+            <label class="btn ghost"><input type="file" id="photoIn" accept="image/*" hidden>Choose photo</label>
+            <button type="button" class="btn ghost" id="photoRemove">Remove</button>
+          </div>
+          <div class="segsm" id="kindSeg"><button type="button" data-v="cut">Cut-out</button><button type="button" data-v="photo">Photo</button></div>
+          <p class="help">Phone photos upload as framed photos. For a cut-out (no background), run it through Claude Code later.</p>
+        </div>
+        <div class="pair"><label class="fld"><span>Name · EN</span><input name="name.en" type="text" required></label><label class="fld"><span>Name · RU</span><input name="name.ru" type="text" lang="ru"></label></div>
+        <label class="fld"><span>Description · EN</span><textarea name="desc.en" rows="2"></textarea></label>
+        <label class="fld"><span>Description · RU</span><textarea name="desc.ru" rows="2" lang="ru"></textarea></label>
+        <div class="fld"><span>Tier</span><div class="segsm" id="tierSeg"></div></div>
+        <div class="pair"><label class="fld"><span>Price (USD, approx.) · EN</span><input name="price.en" type="text" placeholder="~$55" inputmode="text"></label><label class="fld"><span>· RU</span><input name="price.ru" type="text" lang="ru" placeholder="same as EN"></label></div>
+        <div class="pair"><label class="fld"><span>Price note · EN</span><input name="note.en" type="text" placeholder="retail · resale ~$80"></label><label class="fld"><span>· RU</span><input name="note.ru" type="text" lang="ru"></label></div>
+        <label class="fld"><span>Id (url slug)</span><input name="id" type="text" pattern="[a-z0-9][a-z0-9-]*" placeholder="auto" autocapitalize="none"></label>
+        <div class="fld"><span>Availability</span>
+          <div class="avail-rows">
+            <div class="avrow"><span>🇪🇺 Europe</span><div class="segsm" data-av="eu"><button type="button" data-v="y">✓</button><button type="button" data-v="g">~</button><button type="button" data-v="n">✗</button></div></div>
+            <div class="avrow"><span>🇹🇷 Turkey</span><div class="segsm" data-av="tr"><button type="button" data-v="y">✓</button><button type="button" data-v="g">~</button><button type="button" data-v="n">✗</button></div></div>
+            <div class="avrow"><span>🇷🇺 Russia</span><div class="segsm" data-av="ru"><button type="button" data-v="y">✓</button><button type="button" data-v="g">~</button><button type="button" data-v="n">✗</button></div></div>
+          </div>
+          <p class="help">✓ sold officially · ~ import or resale · ✗ not there</p>
+        </div>
+        <div class="fld"><span>Where to look</span><div id="whereRows"></div><button type="button" class="btn ghost sm" id="whereAdd">＋ link</button></div>
+        <div class="fld"><span>Status</span><div class="segsm" id="statusSeg"><button type="button" data-v="wanted">Wanted</button><button type="button" data-v="got">Got it ✓</button><button type="button" data-v="dropped">Hidden</button></div></div>
+        <div class="fld" id="orderFld"><span>Order in its tier</span><div class="orderbtns"><button type="button" class="btn ghost sm" id="moveUp">↑ Move up</button><button type="button" class="btn ghost sm" id="moveDown">↓ Move down</button></div></div>
+        <div class="fld danger-zone" id="deleteFld"><button type="button" class="btn ghost danger" id="deleteBtn">Delete item</button></div>
+        <p class="err" id="edErr" role="alert" hidden></p>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" hidden><span class="t-dot"></span><span id="toastMsg"></span></div>
+</div>
+<script src="assets/sounds.js" defer></script>
+<script src="assets/admin.js" defer></script>
+</body>
+</html>
