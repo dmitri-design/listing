@@ -38,11 +38,17 @@
   <header class="hero">
     <div class="topbar">
       <div class="brand"></div>
-      <div class="lang" role="group" aria-label="Language"><button type="button" data-lang="en">EN</button><button type="button" data-lang="ru">RU</button></div>
+      <div class="ctrls">
+        <button type="button" class="sound-gate" id="soundGate" aria-pressed="true"><span class="gate-dot" aria-hidden="true"></span><span class="gate-label"></span></button>
+        <div class="langsw">
+          <span class="lsw-lbl" data-lang="en" aria-hidden="true">EN</span>
+          <button type="button" class="toggle" id="langToggle" role="switch" aria-checked="false" aria-label="Русский / English"><span class="knob"></span></button>
+          <span class="lsw-lbl" data-lang="ru" aria-hidden="true">RU</span>
+        </div>
+      </div>
     </div>
     <h1 id="title"></h1>
     <p class="tag"></p>
-    <svg class="swash" viewBox="0 0 160 14" fill="none" aria-hidden="true"><path d="M2 9 C 40 2, 80 12, 158 5" stroke="#b9a37a" stroke-width="1.6" stroke-linecap="round"/></svg>
     <nav class="tiernav" id="tiernav"></nav>
     <div class="legend"></div>
   </header>
@@ -55,6 +61,7 @@
   </footer>
 </div>
 
+<script src="assets/sounds.js" defer></script>
 <script src="assets/app.js" defer></script>
 </body>
 </html>

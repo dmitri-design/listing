@@ -10,6 +10,8 @@ const ART = {
   sweater: `<svg viewBox="0 0 200 200"><ellipse cx="100" cy="178" rx="70" ry="8" fill="#000" opacity=".08"/><path d="M34 60 q66 -30 132 0 l12 70 l-26 6 l-6 -30 v70 h-92 v-70 l-6 30 l-26 -6 z" fill="#c9a37a"/><path d="M34 60 q66 -30 132 0 l-8 46 q-58 -18 -116 0 z" fill="#b8905f" opacity=".35"/><path d="M72 52 q28 22 56 0 q-28 -14 -56 0z" fill="#8f6a3c"/><path d="M72 52 q28 22 56 0" stroke="#7b5a30" stroke-width="3" fill="none"/><path d="M54 176 h92" stroke="#b08a5a" stroke-width="6" stroke-dasharray="3 3"/><path d="M46 106 l-6 30 M154 106 l6 30" stroke="#b08a5a" stroke-width="2"/></svg>`,
   squarewatch: `<svg viewBox="0 0 200 200"><ellipse cx="100" cy="186" rx="40" ry="6" fill="#000" opacity=".08"/><rect x="72" y="8" width="56" height="48" rx="8" fill="#3b2a1e"/><rect x="72" y="144" width="56" height="48" rx="8" fill="#3b2a1e"/><rect x="78" y="14" width="44" height="36" rx="5" fill="none" stroke="#5b4231" stroke-width="2"/><rect x="78" y="150" width="44" height="36" rx="5" fill="none" stroke="#5b4231" stroke-width="2"/><rect x="58" y="56" width="84" height="88" rx="14" fill="#d9dadf" stroke="#9a9ba4" stroke-width="2"/><rect x="68" y="66" width="64" height="68" rx="8" fill="#f7f7f9" stroke="#b9bac2" stroke-width="1.5"/><g fill="#9a9ba4"><circle cx="66" cy="64" r="3"/><circle cx="134" cy="64" r="3"/><circle cx="66" cy="136" r="3"/><circle cx="134" cy="136" r="3"/></g><g stroke="#2a2a2e" stroke-width="2"><path d="M100 72v6M100 122v6M74 100h6M120 100h6"/></g><path d="M100 100 L100 78" stroke="#2a5bd7" stroke-width="3.5" stroke-linecap="round"/><path d="M100 100 L118 108" stroke="#2a5bd7" stroke-width="3" stroke-linecap="round"/><circle cx="100" cy="100" r="3" fill="#2a5bd7"/><rect x="140" y="94" width="8" height="12" rx="2" fill="#9a9ba4"/><circle cx="146" cy="100" r="2" fill="#2a5bd7"/></svg>`,
   gmtwatch: `<svg viewBox="0 0 200 200"><ellipse cx="100" cy="188" rx="36" ry="5" fill="#000" opacity=".08"/><g fill="#c9cad1" stroke="#9a9ba4" stroke-width="1.5"><rect x="72" y="4" width="56" height="18" rx="3"/><rect x="76" y="22" width="48" height="16" rx="3"/><rect x="76" y="162" width="48" height="16" rx="3"/><rect x="72" y="178" width="56" height="18" rx="3"/></g><circle cx="100" cy="100" r="60" fill="#d9dadf" stroke="#9a9ba4" stroke-width="2"/><path d="M100 46 a54 54 0 0 1 54 54 h-14 a40 40 0 0 0 -40 -40 z" fill="#1d3f8f"/><path d="M100 46 a54 54 0 0 0 -54 54 h14 a40 40 0 0 1 40 -40 z" fill="#1d3f8f"/><path d="M46 100 a54 54 0 0 0 108 0 h-14 a40 40 0 0 1 -80 0 z" fill="#b4262a"/><circle cx="100" cy="100" r="40" fill="#121216"/><g fill="#e9f0d8"><circle cx="100" cy="66" r="3"/><circle cx="100" cy="134" r="3"/><circle cx="66" cy="100" r="3"/><circle cx="134" cy="100" r="3"/><circle cx="124" cy="76" r="2.4"/><circle cx="76" cy="76" r="2.4"/><circle cx="124" cy="124" r="2.4"/><circle cx="76" cy="124" r="2.4"/></g><path d="M100 100 L100 72" stroke="#e9e9ee" stroke-width="3.5" stroke-linecap="round"/><path d="M100 100 L120 112" stroke="#e9e9ee" stroke-width="3" stroke-linecap="round"/><path d="M100 100 L80 80" stroke="#d93a3a" stroke-width="2.5" stroke-linecap="round"/><circle cx="100" cy="100" r="3" fill="#e9e9ee"/><rect x="158" y="95" width="8" height="10" rx="2" fill="#9a9ba4"/></svg>`,
+  /* neutral stand-in for an item with no photo and no sketch of its own (e.g. just added in admin) */
+  box: `<svg viewBox="0 0 200 200"><ellipse cx="100" cy="172" rx="64" ry="9" fill="#000" opacity=".08"/><rect x="50" y="96" width="100" height="72" rx="5" fill="#e4d4b4"/><rect x="50" y="98" width="100" height="9" fill="#000" opacity=".06"/><rect x="42" y="76" width="116" height="24" rx="5" fill="#efe4cc"/><rect x="92" y="76" width="16" height="92" fill="#c9a06b"/><path d="M100 76C88 52 62 50 64 66c2 9 18 12 36 10zM100 76c12-24 38-26 36-10-2 9-18 12-36 10z" fill="#c9a06b"/><circle cx="100" cy="75" r="7" fill="#b38a55"/></svg>`,
 };
 /* ===================================================================== */
 const app = document.getElementById('app');
@@ -22,7 +24,9 @@ const t = (v, raw) => {
   if (v && typeof v === 'object') return `<span class="l-en" lang="en">${f(v.en ?? '')}</span><span class="l-ru" lang="ru">${f(v.ru ?? v.en ?? '')}</span>`;
   return v == null ? '' : f(v);
 };
-const art = (k) => (ART[k] || ART.ring).replace('<svg ', '<svg width="100%" height="100%" ');
+/* the same value as plain text in one language (tab title); a plain string serves both */
+const pick = (v, l) => v && typeof v === 'object' ? String(v[l] ?? v.en ?? '') : (v == null ? '' : String(v));
+const art = (k) => (ART[k] || ART.box).replace('<svg ', '<svg width="100%" height="100%" ');
 const safeUrl = (u) => (typeof u === 'string' && /^https?:\/\//i.test(u)) ? u : null;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const MARK = { y: '✓', g: '~', n: '✗' };
@@ -30,18 +34,47 @@ const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
 const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
 
 let DATA = null;   // { site, tiers, ui, items }
+/* booking API (Cloudflare Worker). The page stays static; without an API the booking UI simply isn't shown. */
+const LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+let API = '', LIST = 'dmitri';
+const tokKey = (id) => `bk:${LIST}:${id}`;
+/* cancel tokens: localStorage, plus memory for this page view (storage blocked, e.g. Safari "Block All Cookies") */
+const MEM = new Map();
+function myToken(id) { try { const v = localStorage.getItem(tokKey(id)); if (v) return v; } catch (e) {} return MEM.get(tokKey(id)) || null; }
+function keepToken(id, tok) { MEM.set(tokKey(id), tok); try { localStorage.setItem(tokKey(id), tok); } catch (e) {} }
+function forgetToken(id) { MEM.delete(tokKey(id)); try { localStorage.removeItem(tokKey(id)); } catch (e) {} }
 
-/* ---------- language ---------- */
+/* ---------- sound (assets/sounds.js, a port of Velvet UI): the pill is the visible, remembered mute ---------- */
+const snd = (role, voice) => { if (window.Sound) window.Sound.play(role, voice); };
+const GATE = { on: { en: 'Sound on', ru: 'Звук вкл' }, off: { en: 'Sound off', ru: 'Звук выкл' } };   // before the list loads, or if it never does
+function renderGate() {
+  const g = $('#soundGate'); if (!g || !window.Sound) return;
+  const on = window.Sound.enabled;
+  g.setAttribute('aria-pressed', on ? 'true' : 'false');
+  const ui = (DATA && DATA.ui) || {};
+  g.querySelector('.gate-label').innerHTML = t(on ? ui.soundOn || GATE.on : ui.soundOff || GATE.off);
+}
+$('#soundGate') && $('#soundGate').addEventListener('click', () => {
+  if (!window.Sound) return;
+  const on = !window.Sound.enabled;
+  window.Sound.setEnabled(on);
+  if (on) snd('ui.confirm', 'signature');
+  renderGate();
+});
+
+/* ---------- language: the Velvet "state change" switch (off = EN, on = RU) with its detent sound ---------- */
+const TITLE0 = { en: 'Wishlist 2026 · Dmitri', ru: 'Вишлист 2026 · Дима' };   // the tab title before the list loads, or if it never does
 function setLang(l, save) {
   app.classList.toggle('ru', l === 'ru');
   document.documentElement.lang = l;
-  document.querySelectorAll('.lang button').forEach(b => {
-    const on = b.dataset.lang === l;
-    b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
-  });
-  if (DATA) document.title = DATA.site.title[l].replace(/<[^>]+>/g, '') + ' · ' + DATA.site.owner;
+  const sw = $('#langToggle');
+  if (sw) { sw.classList.toggle('is-on', l === 'ru'); sw.setAttribute('aria-checked', l === 'ru' ? 'true' : 'false'); }
+  document.querySelectorAll('.lsw-lbl').forEach(b => b.classList.toggle('on', b.dataset.lang === l));
+  if (DATA) { const o = pick(DATA.site.owner, l); document.title = pick(DATA.site.title, l).replace(/<[^>]+>/g, '') + (o ? ' · ' + o : ''); }
+  else document.title = pick(TITLE0, l);
   if (l === 'ru') preloadCyrillic();
   if (save) { try { localStorage.setItem('wl-lang', l); } catch (e) {} }
+  renderGate();
 }
 function preloadCyrillic() {
   if (preloadCyrillic.done) return; preloadCyrillic.done = true;
@@ -54,22 +87,29 @@ function preloadCyrillic() {
 let lang = 'en';
 try { lang = localStorage.getItem('wl-lang') || ((navigator.language || '').toLowerCase().startsWith('ru') ? 'ru' : 'en'); } catch (e) {}
 setLang(lang, false);
-document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang, true)));
+const switchLang = () => { const l = L() === 'ru' ? 'en' : 'ru'; setLang(l, true); snd(l === 'ru' ? 'toggle.on' : 'toggle.off', 'signature'); };
+$('#langToggle') && $('#langToggle').addEventListener('click', switchLang);
+document.querySelectorAll('.lsw-lbl').forEach(b => b.addEventListener('click', () => { if (b.dataset.lang !== L()) switchLang(); }));
 
-/* ---------- title letters ---------- */
+/* ---------- title letters: one span per letter, grouped per word (.w, nowrap) so a line only breaks between words ---------- */
 function renderTitle(title) {
   const h = $('#title');
+  const key = JSON.stringify(title); if (key === renderTitle.key) return;   // same title: don't replay the letters
+  renderTitle.key = key;
   const mk = (txt, cls) => {
-    let i = 0, out = '';
+    let i = 0, out = '', w = '';
+    const end = () => { if (w) out += `<span class="w">${w}</span>`; w = ''; };
     for (const part of String(txt).split(/(<i>.*?<\/i>)/)) {
       if (!part) continue;
       const ital = part.startsWith('<i>');
       const chars = part.replace(/<\/?i>/g, '');
       for (const ch of chars) {
-        const c = ch === ' ' ? '&nbsp;' : esc(ch);
-        out += ital ? `<i><span class="ch" style="--i:${i++}">${c}</span></i>` : `<span class="ch" style="--i:${i++}">${c}</span>`;
+        if (ch === ' ') { end(); out += ' '; i++; continue; }
+        const c = `<span class="ch" style="--i:${i++}">${esc(ch)}</span>`;
+        w += ital ? `<i>${c}</i>` : c;
       }
     }
+    end();
     return `<span class="${cls}">${out}</span>`;
   };
   h.innerHTML = mk(title.en, 'l-en') + mk(title.ru, 'l-ru');
@@ -98,20 +138,38 @@ function renderNav(tiers) {
 
 /* ---------- cards ---------- */
 const CROSS = `<svg class="cross" viewBox="0 0 100 140" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M13 15 C 22 29, 30 42, 43 60 S 70 103, 88 126"/><path pathLength="1" d="M88 13 C 75 33, 63 53, 50 72 S 24 110, 11 128"/></svg>`;
-const FX = `<div class="fx" aria-hidden="true"><i class="foil"></i><i class="glare"></i><i class="lines"></i><i class="sweep"></i></div>`;
+const FX = `<div class="fx" aria-hidden="true"><i class="foil"></i><i class="glit"></i><i class="glare"></i><i class="gloss"></i><i class="sweep"></i></div>`;
+const ribbonHTML = (id) => `<div class="ribbon" id="b-${esc(id)}">${t(DATA.ui.booked)}</div>`;
 
 function imgHTML(it, cls, eager) {
   const photo = it.kind === 'photo';
   if (!it.image) {
-    return `<div class="${cls}">${art(it.illustration || 'ring')}<span class="sketch">${t(DATA.ui.sketch)}</span></div>`;
+    return `<div class="${cls}">${art(it.illustration)}<span class="sketch">${t(DATA.ui.sketch)}</span></div>`;
   }
   const dim = it.w && it.h ? ` width="${+it.w}" height="${+it.h}"` : '';
   return `<div class="${cls}${photo ? ' photo' : ''}"><img src="${esc(it.image)}" alt=""${dim} loading="${eager ? 'eager' : 'lazy'}" decoding="async"></div>`;
 }
 function thumbHTML(it) {
   const photo = it.kind === 'photo';
-  if (!it.image) return `<div class="thumb">${art(it.illustration || 'ring')}</div>`;
+  if (!it.image) return `<div class="thumb">${art(it.illustration)}</div>`;
   return `<div class="thumb${photo ? ' photo' : ''}"><img src="${esc(it.image)}" alt="" loading="lazy" decoding="async"></div>`;
+}
+/* got it: the back drops price, availability and shops — just the stamp and a handwritten thank-you (text editable in admin → Texts) */
+/* a longer note is written smaller, so the stamp and the signature stay on the card (past 13 px the note's end clips) */
+const HAND_FIT = { en: 92, ru: 82 };   // characters that fit at 21 px on the smallest card (232 px), with a margin
+const hand = (note, l) => Math.floor(clamp(21 * Math.sqrt(HAND_FIT[l] / Math.max(1, pick(note, l).length)), 13, 21) * 2) / 2;
+function gotBackHTML(it, ui) {
+  const note = ui.gotNote || { en: 'Thank you!', ru: 'Спасибо!' };
+  return `<div class="face back got-back" inert>
+            ${FX}
+            <div class="gb-name">${t(it.name)}</div>
+            <div class="gb-mid">
+              <span class="stamp">${t(ui.got)} <span aria-hidden="true">✓</span></span>
+              <p class="thanks" style="--hen:${hand(note, 'en')}px;--hru:${hand(note, 'ru')}px">${t(note)}</p>
+              ${ui.gotSign ? `<p class="sign">${t(ui.gotSign)}</p>` : ''}
+            </div>
+            <div class="bfoot"><span></span><button type="button" class="hint"><span class="sr">${t(ui.back)}</span><span aria-hidden="true">↻</span></button></div>
+          </div>`;
 }
 function cardHTML(it, tier, idx, ri, eager) {
   const ui = DATA.ui;
@@ -144,18 +202,17 @@ function cardHTML(it, tier, idx, ri, eager) {
             <h3 class="name" id="n-${id}">${t(it.name)}</h3>
             <p class="desc">${t(it.desc)}</p>
             <div class="foot"><span class="tier-lbl"><i class="tr"></i>${t(tier.short || tier.name)}</span><span class="tap">${t(ui.tap)} ↻</span></div>
-            ${got ? CROSS : ''}
+            ${got ? CROSS : ''}${booked ? ribbonHTML(it.id) : ''}
           </div>
-          <div class="face back" inert>
+          ${got ? gotBackHTML(it, ui) : `<div class="face back" inert>
             ${FX}
             <div class="hd">${thumbHTML(it)}<div><div class="lbl">${t(ui.approx)}</div><div class="note">${t(it.note || '')}</div></div></div>
             <div class="big">${t(it.price)}</div>
             <div class="avail">${av}</div>
             <div class="where"><div class="lbl">${t(ui.where)}</div><ul>${where}</ul></div>
-            <div class="bfoot">${got ? `<span class="stamp">${t(ui.got)} ✓</span>` : ''}<button type="button" class="hint">${t(ui.back)} ↻</button></div>
-          </div>
+            <div class="bfoot"><div class="bk">${bookPart(it)}</div><button type="button" class="hint"><span class="sr">${t(ui.back)}</span><span aria-hidden="true">↻</span></button></div>
+          </div>`}
         </div>
-        ${booked ? `<div class="bk-tag" id="b-${id}" aria-hidden="true">${t(ui.booked)}</div>` : ''}
       </div>
     </div>
   </div>`;
@@ -178,7 +235,8 @@ function layoutKey() {
   const perRow = Math.max(1, Math.floor((W + gap) / (cw + gap)));
   return { mobile, perRow, key: 'd' + perRow };
 }
-function layout(force) {
+/* quiet: a late live list replacing what's on screen — open cards stay open, rows already shown don't drop in again */
+function layout(force, quiet) {
   if (!DATA) return;
   const { mobile, perRow, key } = layoutKey();
   if (!force && key === layout.key) return;   // same column count → keep flipped cards, focus and row scroll
@@ -203,9 +261,18 @@ function layout(force) {
       ${rows.map(r => `<div class="scroller${mobile ? '' : ' fits'}"><div class="row pre">${WIRE}${r.map((it, i) => cardHTML(it, tier, items.indexOf(it), i, eagerLeft-- > 0)).join('')}</div></div>${mobile ? `<div class="swipe">${t(DATA.ui.swipe)}</div>` : ''}`).join('')}
     </section>`;
   }
+  const open = quiet ? [...main.querySelectorAll('.card.flipped')].map(c => c.dataset.id) : [];
+  /* the guest's place in each scrolled row: the card they were looking at (flipped, else nearest the middle) and where it sat */
+  const rowKey = (s) => s.closest('.tier').id + ':' + [...s.closest('.tier').querySelectorAll('.scroller')].indexOf(s);
+  const anchors = quiet ? [...main.querySelectorAll('.scroller')].filter(s => s.scrollLeft || s.querySelector('.card.flipped')).map(s => {
+    const drops = [...s.querySelectorAll('.drop')], mid = s.scrollLeft + s.clientWidth / 2, dist = (x) => Math.abs(x.offsetLeft + x.offsetWidth / 2 - mid);
+    const fl = drops.filter(x => x.querySelector('.card.flipped') && dist(x) < s.clientWidth / 2), d = (fl.length ? fl : drops).reduce((a, b) => dist(b) < dist(a) ? b : a);
+    return { key: rowKey(s), px: s.scrollLeft, id: d.querySelector('.card').dataset.id, off: d.offsetLeft - s.scrollLeft };
+  }) : [];
   stopTilt(); cancelAnimationFrame(tiltRaf); tiltRaf = 0; tiltEv = null;
   activeCard = null;
   main.innerHTML = html;
+  open.forEach(id => { const c = main.querySelector(`.card[data-id="${CSS.escape(id)}"]`); if (c) flip(c, true); });   // before any style is computed: no flip animation
   /* sag: cards in the middle of a wire hang lower and swing a little more */
   main.querySelectorAll('.row').forEach(row => {
     const rw = row.scrollWidth;
@@ -216,7 +283,14 @@ function layout(force) {
       d.style.setProperty('--amp', (0.85 + 1.2 * tt * (1 - tt)).toFixed(2));
     });
   });
+  anchors.forEach(a => {   // same card at the same spot; the row's old offset if the card is gone or moved to another row
+    const c = main.querySelector(`.card[data-id="${CSS.escape(a.id)}"]`), cs = c && c.closest('.scroller');
+    const d = cs && rowKey(cs) === a.key ? c.closest('.drop') : null;
+    const s = d ? cs : [...main.querySelectorAll('.scroller')].find(x => rowKey(x) === a.key);
+    if (s) s.scrollLeft = d ? d.offsetLeft - a.off : a.px;
+  });
   bindSway();
+  if (quiet) { const h = window.innerHeight || 800; main.querySelectorAll('.row.pre').forEach(r => { if (r.getBoundingClientRect().top < h * 0.96) r.classList.replace('pre', 'still'); }); }
   /* drop-in when a row scrolls into view */
   requestAnimationFrame(reveal); setTimeout(reveal, 120); setTimeout(reveal, 600);
 }
@@ -242,7 +316,7 @@ function bindSway() {
     if (!sc.classList.contains('fits')) sc.addEventListener('scroll', () => {
       const now = performance.now(), dt = Math.max(16, now - (r.lastT || now - 16)) / 1000;
       const vx = (sc.scrollLeft - r.lastX) / dt; r.lastX = sc.scrollLeft; r.lastT = now;
-      kick(r, -vx * 0.02);                     // cards lag behind the hand
+      if (vx) kick(r, -vx * 0.02);             // cards lag behind the hand (a restored position fires once with none)
     }, { passive: true });
     return r;
   });
@@ -280,6 +354,8 @@ window.addEventListener('scroll', () => {
 let activeCard = null;
 document.addEventListener('click', (e) => {
   if (e.target.closest('a')) return;
+  const bb = e.target.closest('.bk-btn'); if (bb) { openSheet(bb.dataset.id); return; }
+  const ub = e.target.closest('.bk-undo'); if (ub) { undo(ub); return; }
   const card = e.target.closest('.card'); if (!card) return;
   flip(card);
 });
@@ -289,9 +365,10 @@ document.addEventListener('keydown', (e) => {
   const face = e.target.closest && e.target.closest('.face'); if (!face) return;
   e.preventDefault(); flip(face.closest('.card'));
 });
-function flip(card) {
+function flip(card, quiet) {
   card.classList.add('anim');
   const flipped = card.classList.toggle('flipped');
+  if (!quiet) snd(flipped ? 'toggle.on' : 'toggle.off', 'crisp');   /* the "crisp" voice: a short bright tick for the flip */
   const front = card.querySelector('.front'), back = card.querySelector('.back');
   front.toggleAttribute('inert', flipped); back.toggleAttribute('inert', !flipped);
   front.setAttribute('aria-expanded', flipped ? 'true' : 'false');
@@ -393,21 +470,236 @@ function hintTilt(card) {
   setTimeout(() => { const h = back.querySelector('.tilt-hint'); if (h) h.remove(); }, 3000);
 }
 
-/* ---------- data ---------- */
+/* ---------- booking: "I'll get this" → bottom sheet → one active booking per item (server-enforced) ---------- */
+function bookPart(it) {
+  if (!API || !DATA || it.status === 'got') return '';
+  const ui = DATA.ui, id = esc(it.id);
+  if (it.booked && myToken(it.id)) return `<button type="button" class="bk-undo" data-id="${id}"><span>${t(ui.bookedByYou)}</span><small>${t(ui.unbook)}</small></button>`;
+  if (it.booked) return `<span class="bk-state">${t(ui.bookedTaken || ui.booked)}</span>`;
+  return `<button type="button" class="bk-btn" data-id="${id}">${t(ui.bookBtn)}</button>`;
+}
+function setBooked(it, booked) {
+  it.booked = !!booked;
+  if (!booked) forgetToken(it.id);
+  const card = document.querySelector(`.card[data-id="${CSS.escape(it.id)}"]`); if (!card) return;
+  const got = it.status === 'got', show = !got && it.booked;
+  card.classList.toggle('booked', show);
+  const rib = card.querySelector('.front .ribbon');
+  if (show && !rib) card.querySelector('.front').insertAdjacentHTML('beforeend', ribbonHTML(it.id));
+  if (!show && rib) rib.remove();
+  card.querySelector('.front').setAttribute('aria-labelledby', `n-${it.id}${got ? ` s-${it.id}` : ''}${show ? ` b-${it.id}` : ''}`);
+  const bk = card.querySelector('.bk'); if (bk) bk.innerHTML = bookPart(it);
+}
+let bookingsAt = 0, bkSeq = 0;
+const touched = new Map();   // item id → bkSeq when this phone last booked or undid it
+/* first 12 hex chars of sha256(token): the Worker lists the same prefix per active booking, so a key left over from an
+   older booking (cleared by the owner, since rebooked by someone else) is recognised as not ours */
+async function tokHash(tok) {
+  try { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(tok)); return [...new Uint8Array(b, 0, 6)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+  catch (e) { return null; }
+}
+async function refreshBookings() {
+  if (!API || !DATA) return;
+  bookingsAt = Date.now();
+  const seq = ++bkSeq;
+  try {
+    const r = await fetch(`${API}/api/lists/${encodeURIComponent(LIST)}/bookings`, { cache: 'no-store' });
+    if (!r.ok) return;
+    const j = (await r.json()) || {}, set = new Set(j.booked || []), k = j.k || {};
+    const stale = new Set();
+    await Promise.all(DATA.items.map(async it => { const tok = k[it.id] && myToken(it.id); if (tok) { const h = await tokHash(tok); if (h && h !== k[it.id]) stale.add(it.id); } }));
+    DATA.items.forEach(it => {
+      if ((touched.get(it.id) || 0) > seq) return;   // booked/undone here after this request left: the answer is older than what we know
+      if (stale.has(it.id)) { forgetToken(it.id); setBooked(it, true); return; }   // booked, but by someone else now
+      if (!!it.booked !== set.has(it.id) || (!set.has(it.id) && myToken(it.id))) setBooked(it, set.has(it.id));
+    });
+  } catch (e) { /* offline: keep what we have */ }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - bookingsAt > 15000) refreshBookings(); });
+
+let sheet = null, sheetItem = null;
+function ensureSheet() {
+  if (sheet) return sheet;
+  const ui = DATA.ui;
+  sheet = document.createElement('dialog');
+  sheet.className = 'sheet';
+  sheet.setAttribute('aria-labelledby', 'sheet-title');
+  sheet.innerHTML = `<form class="sheet-in" method="dialog" novalidate>
+    <div class="sheet-grab"><div class="grabber" aria-hidden="true"></div>
+    <div class="sheet-top"><button type="button" class="sheet-cancel">${t(ui.cancel)}</button><h2 id="sheet-title">${t(ui.bookTitle)}</h2><span aria-hidden="true"></span></div></div>
+    <p class="sheet-item"></p>
+    <label class="sheet-label"><span>${t(ui.bookName)}</span><input name="name" type="text" maxlength="40" autocomplete="name" autocapitalize="words" enterkeyhint="done"></label>
+    <p class="sheet-help">${t(ui.bookHelp)}</p>
+    <p class="sheet-err" role="alert" hidden></p>
+    <div class="confirm-stage">
+      <button type="submit" class="complete-confirm sheet-go"><span class="complete-spinner" aria-hidden="true"></span><span class="cc-label">${t(ui.bookConfirm)}</span></button>
+      <div class="confirmation-success" aria-hidden="true"><svg class="confirmation-check" viewBox="0 0 96 96"><path d="M28 50.5 42.5 65 69 34"/></svg><span>${t(ui.bookedDone || ui.booked)}</span></div>
+    </div>
+    <p class="sr" role="status" id="bk-status"></p>
+  </form>`;
+  app.appendChild(sheet);
+  sheet.querySelector('.sheet-cancel').addEventListener('click', closeSheet);
+  sheet.addEventListener('click', (e) => { if (e.target === sheet) closeSheet(); });   // tap on the dimmed backdrop
+  /* while a booking is in flight the sheet stays: its answer must land on this item (Esc, Android back) */
+  sheet.addEventListener('cancel', (e) => { if (booking) e.preventDefault(); });
+  sheet.addEventListener('close', () => {   // a forced close (second Esc/back) reopens it, without raising the phone keyboard
+    if (!booking) return;
+    sheet.showModal();
+    if (!finePointer.matches && document.activeElement) document.activeElement.blur();
+  });
+  sheet.querySelector('form').addEventListener('submit', doBook);
+  /* swipe the sheet down to dismiss (grabber + header) */
+  const grab = sheet.querySelector('.sheet-grab');
+  let y0 = null, dy = 0;
+  grab.addEventListener('pointerdown', (e) => { if (booking || e.target.closest('button')) return; y0 = e.clientY; dy = 0; grab.setPointerCapture(e.pointerId); sheet.style.transition = 'none'; });
+  grab.addEventListener('pointermove', (e) => { if (y0 == null) return; dy = Math.max(0, e.clientY - y0); sheet.style.transform = `translateY(${dy}px)`; });
+  const end = () => { if (y0 == null) return; y0 = null; sheet.style.transition = ''; sheet.style.transform = ''; if (dy > 80) closeSheet(); };
+  grab.addEventListener('pointerup', end); grab.addEventListener('pointercancel', end);
+  return sheet;
+}
+function openSheet(id) {
+  const it = DATA && DATA.items.find(i => i.id === id); if (!it || !API || booking) return;   // one booking at a time
+  ensureSheet(); sheetItem = id;
+  sheet.querySelector('.sheet-item').innerHTML = t(it.name);
+  const err = sheet.querySelector('.sheet-err'); err.hidden = true; err.innerHTML = '';
+  const stage = sheet.querySelector('.confirm-stage'); stage.className = 'confirm-stage';
+  const st0 = sheet.querySelector('#bk-status'); if (st0) st0.textContent = '';
+  const go = sheet.querySelector('.sheet-go'); go.disabled = false; go.querySelector('.cc-label').innerHTML = t(DATA.ui.bookConfirm);
+  sheet.querySelector('.sheet-cancel').disabled = false;
+  const input = sheet.querySelector('input'); let last = ''; try { last = localStorage.getItem('wl-name') || ''; } catch (e) {}
+  input.value = last;
+  sheet.showModal();
+  if (finePointer.matches) input.focus();   // phones: no keyboard until the guest taps the field
+}
+function closeSheet() { if (booking) return; if (sheet && sheet.open) sheet.close(); sheetItem = null; }
+/* The Velvet "Confirmation" element: Book → Booking (spinner, request in flight) → Booked (green circle, drawn check,
+   signature ui.confirm sound). Failure: shake + state.error, message in the sheet, button back to Book. */
+let booking = false;
+async function doBook(e) {
+  e.preventDefault();
+  if (booking) return;
+  let it = DATA.items.find(i => i.id === sheetItem); if (!it) return closeSheet();
+  const ui = DATA.ui, stage = sheet.querySelector('.confirm-stage'), go = sheet.querySelector('.sheet-go'), lbl = go.querySelector('.cc-label'), err = sheet.querySelector('.sheet-err');
+  const cx = sheet.querySelector('.sheet-cancel');
+  const name = sheet.querySelector('input').value.trim().slice(0, 40);
+  try { localStorage.setItem('wl-name', name); } catch (x) {}
+  booking = true; go.disabled = true; cx.disabled = true; err.hidden = true;
+  stage.classList.remove('shaking'); stage.classList.add('is-loading'); lbl.innerHTML = t(ui.booking || ui.bookConfirm);
+  const t0 = performance.now();
+  let r = null;
+  try {
+    r = await fetch(`${API}/api/lists/${encodeURIComponent(LIST)}/items/${encodeURIComponent(it.id)}/book`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(name ? { name } : {}), signal: giveUp(30000) });
+  } catch (x) { r = null; }   // offline, dropped, or no answer in 30 s
+  await new Promise(res => setTimeout(res, Math.max(0, 520 - (performance.now() - t0))));   // the spinner is a beat, not a flash
+  stage.classList.remove('is-loading');
+  it = DATA.items.find(i => i.id === it.id) || it;   // a late live list may have replaced DATA meanwhile
+  if (r && r.status === 201) {
+    let token = null; try { token = (await r.json()).token; } catch (x) {}
+    it = DATA.items.find(i => i.id === it.id) || it;   // again: the late list can land while the body arrives
+    touched.set(it.id, ++bkSeq);
+    if (token) keepToken(it.id, token);
+    lbl.innerHTML = t(ui.bookedDone || ui.booked);
+    const st = sheet.querySelector('#bk-status'); if (st) st.textContent = (ui.bookedDone || ui.booked)[L()] || '';
+    stage.classList.add('is-resolved');
+    snd('ui.confirm', 'signature');
+    if (navigator.vibrate) navigator.vibrate(12);
+    setBooked(it, true);
+    setTimeout(() => { booking = false; closeSheet(); }, reduced.matches ? 600 : 1500);
+    return;
+  }
+  const code = r ? r.status : 0;
+  err.innerHTML = t(code === 409 ? ui.taken : code === 410 ? ui.gone : code === 429 ? ui.slowDown : ui.bookFail);
+  err.hidden = false;
+  lbl.innerHTML = t(ui.bookConfirm); go.disabled = false; cx.disabled = false; booking = false;
+  stage.classList.add('shaking'); setTimeout(() => stage.classList.remove('shaking'), 450);
+  snd('state.error', 'signature');
+  if (code === 409) setBooked(it, true);
+  else if (!r) refreshBookings();   // the POST may have gone through anyway: show what the server has
+}
+/* AbortSignal.timeout where it exists (Safari 16+), a timer elsewhere */
+function giveUp(ms) {
+  if (AbortSignal.timeout) return AbortSignal.timeout(ms);
+  const c = new AbortController(); setTimeout(() => c.abort(), ms); return c.signal;
+}
+async function undo(btn) {
+  const id = btn.dataset.id, it = DATA.items.find(i => i.id === id); if (!it || btn.disabled) return;
+  const ui = DATA.ui, sub = btn.querySelector('small') || btn;
+  if (!btn.classList.contains('confirm')) {          // two taps: undo can hand the gift to someone else
+    btn.classList.add('confirm'); sub.innerHTML = t(ui.unbookSure);
+    clearTimeout(btn._t); btn._t = setTimeout(() => { btn.classList.remove('confirm'); sub.innerHTML = t(ui.unbook); }, 3500);
+    return;
+  }
+  clearTimeout(btn._t); btn.disabled = true; sub.innerHTML = t(ui.unbooking || ui.unbookSure);
+  let r = null;
+  try {
+    r = await fetch(`${API}/api/lists/${encodeURIComponent(LIST)}/items/${encodeURIComponent(id)}/book`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${myToken(id) || ''}` } });
+  } catch (x) { r = null; }
+  const now = DATA.items.find(i => i.id === id) || it;   // a late live list may have replaced DATA meanwhile
+  if (r && r.status === 204) {                         // undone: the gift is free again
+    touched.set(id, ++bkSeq);
+    setBooked(now, false); snd('toggle.off', 'signature');
+    return;
+  }
+  if (r && r.status === 404) {                         // this phone's key matches no booking (cleared by the owner, maybe rebooked by someone else)
+    touched.set(id, ++bkSeq); forgetToken(id);
+    await refreshBookings();                           // show what the server says: someone else's booking stays booked
+    const cur = DATA.items.find(i => i.id === id) || it;
+    setBooked(cur, !!cur.booked); snd(cur.booked ? 'state.error' : 'toggle.off', 'signature');
+    return;
+  }
+  if (r && r.status === 401) {                         // this phone's key no longer matches: still booked, just not ours to undo
+    forgetToken(id); setBooked(now, true); snd('state.error', 'signature');
+    return;
+  }
+  btn.disabled = false; btn.classList.remove('confirm'); sub.innerHTML = t(ui.retry); snd('state.error', 'signature');
+}
+
+/* ---------- data: the repo JSON paints first; when an API is configured, the live list (edited from admin.html) replaces it ---------- */
+const okShape = (d) => d && d.site && Array.isArray(d.tiers) && d.ui && Array.isArray(d.items);
+/* what a document shows, minus its version stamp and API address (the repo copy and the live one differ there) */
+const docKey = (d) => JSON.stringify({ ...d, updated: 0, site: { ...d.site, api: 0 } });
+function apply(d, quiet) {
+  const keepApi = DATA && DATA.site && DATA.site.api;
+  DATA = d;
+  if (keepApi && !DATA.site.api) DATA.site.api = keepApi;
+  LIST = (DATA.site && DATA.site.slug) || 'dmitri';
+  API = String((LOCAL && new URLSearchParams(location.search).get('api')) || DATA.site.api || '').replace(/\/+$/, '');
+  renderSite(DATA.site);
+  renderNav(DATA.tiers);
+  layout(true, quiet);
+}
+function fetchLive(api, slug) {
+  return fetch(`${api}/api/lists/${encodeURIComponent(slug)}`, { cache: 'no-store' })
+    .then(r => r.ok ? r.json() : null).then(d => okShape(d) ? d : null).catch(() => null);
+}
 async function load() {
   const main = $('#tiers');
+  let d = null;
   try {
     const r = await fetch('data/items.json', { cache: 'no-cache' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    const d = await r.json();
-    if (!d || !d.site || !Array.isArray(d.tiers) || !Array.isArray(d.items)) throw new Error('bad data shape');
-    DATA = d;
-    renderSite(DATA.site);
-    renderNav(DATA.tiers);
-    layout(true);
+    d = await r.json();
+    if (!okShape(d)) throw new Error('bad data shape');
   } catch (err) {
     main.innerHTML = `<p class="msg"><span class="l-en">Couldn't load the list. Open the link again when you're online.</span><span class="l-ru">Не получилось загрузить список. Открой ссылку ещё раз, когда появится сеть.</span></p>`;
     console.error(err);
+    return;
   }
+  const api = String((LOCAL && new URLSearchParams(location.search).get('api')) || d.site.api || '').replace(/\/+$/, '');
+  if (!api) { apply(d); return; }
+  /* the live list (edited from admin.html) wins; give it 2.5 s, then paint the repo copy and swap if it arrives late */
+  const live = fetchLive(api, (d.site && d.site.slug) || 'dmitri');
+  const first = await Promise.race([live, new Promise(res => setTimeout(() => res(null), 2500))]);
+  if (first) { if (!first.site.api) first.site.api = d.site.api; apply(first); refreshBookings(); return; }
+  const painted = docKey(d);   // before bookings mark items as booked
+  apply(d); refreshBookings();
+  live.then(late => {
+    if (!late || docKey(late) === painted) return;   // same list: leave the page (flipped cards, ribbons) alone
+    if (!late.site.api) late.site.api = d.site.api;
+    late.items.forEach(x => { const o = DATA.items.find(y => y && x && y.id === x.id); if (o && 'booked' in o) x.booked = o.booked; });   // ribbons stay up
+    apply(late, true); refreshBookings();
+  });
 }
 load();

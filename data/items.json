@@ -1,7 +1,10 @@
 {
-  "updated": "2026-10-30",
+  "updated": 1793392520,
   "site": {
-    "owner": "Dmitri",
+    "owner": {
+      "en": "Dmitri",
+      "ru": "Дима"
+    },
     "title": {
       "en": "Wishlist <i>2026</i>",
       "ru": "Вишлист <i>2026</i>"
@@ -25,7 +28,9 @@
     "meta": {
       "en": "Dmitri's wishlist 2026 — 22 things on a wire, from a coffee scale to a Tesla. Tap a card for price and where to look.",
       "ru": "Вишлист Димы на 2026 — 22 вещи на верёвке, от кофейных весов до Теслы. Нажми на карточку: цена и где искать."
-    }
+    },
+    "slug": "dmitri",
+    "api": "https://wishlist-api.dmitri-design.workers.dev"
   },
   "tiers": [
     {
@@ -160,6 +165,94 @@
     "tiltOn": {
       "en": "Turn on",
       "ru": "Включить"
+    },
+    "bookBtn": {
+      "en": "I'll get this",
+      "ru": "Подарю это"
+    },
+    "bookTitle": {
+      "en": "I'll get this",
+      "ru": "Подарю это"
+    },
+    "bookName": {
+      "en": "Your name (optional)",
+      "ru": "Твоё имя (необязательно)"
+    },
+    "bookHelp": {
+      "en": "Only Dmitri sees your name. Everyone else just sees it's booked.",
+      "ru": "Имя увидит только Дима. Остальные увидят только, что подарок занят."
+    },
+    "bookConfirm": {
+      "en": "Book it",
+      "ru": "Забронировать"
+    },
+    "cancel": {
+      "en": "Cancel",
+      "ru": "Отмена"
+    },
+    "bookedByYou": {
+      "en": "Booked by you ✓",
+      "ru": "Твоя бронь ✓"
+    },
+    "unbook": {
+      "en": "Undo",
+      "ru": "Отменить"
+    },
+    "unbookSure": {
+      "en": "Tap again to undo",
+      "ru": "Нажми ещё раз"
+    },
+    "taken": {
+      "en": "Someone just booked this one.",
+      "ru": "Кто-то только что его забронировал."
+    },
+    "gone": {
+      "en": "Already crossed off the list.",
+      "ru": "Уже вычеркнуто из списка."
+    },
+    "slowDown": {
+      "en": "Too many bookings from here. Try again in a bit.",
+      "ru": "Слишком много броней отсюда. Попробуй чуть позже."
+    },
+    "bookFail": {
+      "en": "Couldn't book it. Check the connection and try again.",
+      "ru": "Не получилось. Проверь интернет и попробуй ещё раз."
+    },
+    "retry": {
+      "en": "Try again",
+      "ru": "Ещё раз"
+    },
+    "soundOn": {
+      "en": "Sound on",
+      "ru": "Звук вкл"
+    },
+    "soundOff": {
+      "en": "Sound off",
+      "ru": "Звук выкл"
+    },
+    "booking": {
+      "en": "Booking…",
+      "ru": "Бронирую…"
+    },
+    "bookedDone": {
+      "en": "Booked",
+      "ru": "Забронировано"
+    },
+    "bookedTaken": {
+      "en": "Already booked",
+      "ru": "Уже занято"
+    },
+    "gotNote": {
+      "en": "Thank you so much for looking! I already got this one, so it'll be off the list soon.",
+      "ru": "Спасибо большое, что заглянул! Это у меня уже есть, скоро уберу из списка."
+    },
+    "gotSign": {
+      "en": "— Dmitri",
+      "ru": "— Дима"
+    },
+    "unbooking": {
+      "en": "Undoing…",
+      "ru": "Отменяю…"
     }
   },
   "items": [
