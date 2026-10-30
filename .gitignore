@@ -10,3 +10,7 @@ CLAUDE.md
 _build/
 .playwright-mcp/
 wishlist-2026.html
+node_modules/
+.wrangler/
+.dev.vars
+admin.token

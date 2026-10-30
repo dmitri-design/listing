@@ -1,0 +1,15 @@
+{
+  "name": "wishlist-2026",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "api:dev": "wrangler dev --port 8787",
+    "api:migrate:local": "wrangler d1 migrations apply wishlist --local",
+    "api:migrate": "wrangler d1 migrations apply wishlist --remote",
+    "api:deploy": "wrangler deploy",
+    "bookings": "wrangler d1 execute wishlist --remote --command \"SELECT item, name, datetime(created_at,'unixepoch') AS booked_at FROM bookings WHERE cancelled_at IS NULL ORDER BY created_at\""
+  },
+  "devDependencies": {
+    "wrangler": "^4.156.0"
+  }
+}

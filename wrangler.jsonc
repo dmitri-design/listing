@@ -1,0 +1,18 @@
+// Wishlist booking API (Cloudflare Worker). The page itself is served by GitHub Pages.
+{
+  "name": "wishlist-api",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "d1_databases": [
+    { "binding": "DB", "database_name": "wishlist", "database_id": "7fb51a1f-05a6-409b-9c05-b1829323ac32", "migrations_dir": "worker/migrations" }
+  ],
+  "ratelimits": [
+    { "name": "BOOK_LIMIT", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }
+  ],
+  "vars": {
+    "ALLOWED_ORIGINS": "https://dmitri-design.github.io",
+    "LISTS": "{\"dmitri\":\"https://dmitri-design.github.io/listing/data/items.json\"}"
+  },
+  "observability": { "enabled": true }
+}

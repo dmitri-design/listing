@@ -1,0 +1,270 @@
+// Wishlist API on Cloudflare Workers. The page lives on GitHub Pages; this Worker answers /api/* only.
+//
+// Guests (no auth):
+//   GET    /api/health
+//   GET    /api/lists/:list                        → the list document (site, tiers, ui, items) once seeded; 404 before that
+//   GET    /api/lists/:list/bookings               → { booked: [itemId, …], k: { itemId: token-hash prefix } }   (no names, ever)
+//   POST   /api/lists/:list/items/:item/book       body { name? } → 201 { token } | 409 taken | 410 gone | 429
+//   DELETE /api/lists/:list/items/:item/book       Authorization: Bearer <guest token> → 204 | 404
+//   GET    /api/lists/:list/images/:id             → the photo bytes (cached a day; the doc appends ?v= to bust it)
+//
+// Owner (Authorization: Bearer <ADMIN_TOKEN>, a Worker secret; admin.html keeps it in localStorage):
+//   GET    /api/lists/:list/admin/ping             → 204 (token check)
+//   PUT    /api/lists/:list                        body = whole document → { updated } | 409 { error: 'stale', updated }
+//                                                  (body.updated must equal the stored one; the first save always goes in)
+//   POST   /api/lists/:list/images/:id             body = image bytes, Content-Type image/webp|jpeg|png → { url, updated }
+//   DELETE /api/lists/:list/images/:id             → 204 | 409 in_use (the live list still shows it)
+//   GET    /api/lists/:list/admin/bookings         → { bookings: [{ item, name, created_at }] }
+//   DELETE /api/lists/:list/admin/bookings/:item   → 204 (owner clears a booking)
+
+const SLUG = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$/;
+const ITEM = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/;
+const HOUR = 3600;
+const MAX_ACTIVE_PER_IP = 5;      // per list
+const MAX_PER_IP_HOUR = 10;
+const MAX_DOC = 1024 * 1024;      // 1 MB of JSON
+const MAX_IMAGE = 600 * 1024;     // admin.html resizes to ≤ 800 px before upload
+const IMAGE_TYPES = new Set(['image/webp', 'image/jpeg', 'image/png']);
+
+export default {
+  async fetch(req, env) {
+    const cors = corsHeaders(req, env);
+    if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...cors, 'Access-Control-Max-Age': '86400' } });
+    try {
+      const p = new URL(req.url).pathname.split('/').filter(Boolean);
+      if (p[0] !== 'api') return out({ error: 'not_found' }, 404, cors);
+      if (p[1] === 'health' && p.length === 2) return out({ ok: true }, 200, cors);
+      if (p[1] === 'lists' && SLUG.test(p[2] || '')) {
+        const list = p[2], src = listSource(env, list);
+        if (!src) return out({ error: 'unknown_list' }, 404, cors);
+        if (p.length === 3) {
+          if (req.method === 'GET') return await getDoc(env, list, cors);
+          if (req.method === 'PUT') return await putDoc(req, env, list, cors);
+          return out({ error: 'method' }, 405, cors);
+        }
+        if (p.length === 4 && p[3] === 'bookings' && req.method === 'GET') return out(await activeBookings(env, list), 200, cors);
+        if (p.length === 6 && p[3] === 'items' && ITEM.test(p[4]) && p[5] === 'book') {
+          if (req.method === 'POST') return await book(req, env, list, p[4], src, cors);
+          if (req.method === 'DELETE') return await unbook(req, env, list, p[4], cors);
+          return out({ error: 'method' }, 405, cors);
+        }
+        if (p.length === 5 && p[3] === 'images' && ITEM.test(p[4])) {
+          if (req.method === 'GET') return await getImage(env, list, p[4], cors);
+          if (req.method === 'POST') return await putImage(req, env, list, p[4], cors);
+          if (req.method === 'DELETE') return await deleteImage(req, env, list, p[4], cors);
+          return out({ error: 'method' }, 405, cors);
+        }
+        if (p[3] === 'admin') {
+          const auth = await adminOk(req, env); if (auth !== true) return auth(cors);
+          if (p.length === 5 && p[4] === 'ping') return new Response(null, { status: 204, headers: { ...cors, 'Cache-Control': 'no-store' } });
+          if (p.length === 5 && p[4] === 'bookings' && req.method === 'GET') return out(await ownerBookings(env, list), 200, cors);
+          if (p.length === 6 && p[4] === 'bookings' && ITEM.test(p[5]) && req.method === 'DELETE') return await ownerUnbook(env, list, p[5], cors);
+        }
+      }
+      return out({ error: 'not_found' }, 404, cors);
+    } catch (err) {
+      console.error(err && err.stack ? err.stack : String(err));
+      return out({ error: 'server' }, 500, cors);
+    }
+  },
+};
+
+/* ---------- the list document ---------- */
+async function getDoc(env, list, cors) {
+  const row = await env.DB.prepare('SELECT doc, updated_at FROM lists WHERE slug = ?1').bind(list).first();
+  if (!row) return out({ error: 'not_seeded' }, 404, cors);
+  return new Response(row.doc, { status: 200, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache', ETag: `"${row.updated_at}"`, ...cors } });
+}
+async function putDoc(req, env, list, cors) {
+  const auth = await adminOk(req, env); if (auth !== true) return auth(cors);
+  const raw = await req.text();
+  if (raw.length > MAX_DOC) return out({ error: 'too_large' }, 413, cors);
+  let doc; try { doc = JSON.parse(raw); } catch { return out({ error: 'bad_json' }, 400, cors); }
+  if (!doc || typeof doc !== 'object' || !doc.site || !Array.isArray(doc.tiers) || !doc.ui || !Array.isArray(doc.items)) return out({ error: 'bad_shape' }, 400, cors);
+  const ids = new Set();
+  for (const it of doc.items) {
+    if (!it || typeof it.id !== 'string' || !ITEM.test(it.id) || ids.has(it.id)) return out({ error: 'bad_item_id', id: it && it.id }, 400, cors);
+    ids.add(it.id);
+  }
+  // Optimistic concurrency: a save must name the version it was edited from (doc.updated), else 409 and nothing changes.
+  // The repo copy's "2026-10-30" (or no `updated`) never matches, so it only goes in while there is no row yet.
+  const base = Number.isFinite(doc.updated) ? doc.updated : null;
+  const now = Math.max(Math.floor(Date.now() / 1000), (base ?? 0) + 1);   // strictly newer: two saves in one second differ
+  doc.updated = now;                                     // admin.html sends it back as the base of its next save
+  doc.site = { ...doc.site, slug: list };
+  const r = await env.DB.prepare('INSERT INTO lists (slug, doc, updated_at) VALUES (?1, ?2, ?3) ON CONFLICT(slug) DO UPDATE SET doc = excluded.doc, updated_at = excluded.updated_at WHERE lists.updated_at = ?4')
+    .bind(list, JSON.stringify(doc), now, base).run();
+  if (!(r.meta && r.meta.changes > 0)) {
+    const cur = await env.DB.prepare('SELECT updated_at FROM lists WHERE slug = ?1').bind(list).first();
+    return out({ error: 'stale', updated: cur ? cur.updated_at : null }, 409, cors);
+  }
+  return out({ updated: now }, 200, cors);
+}
+
+/* ---------- images ---------- */
+/* Bytes are stored as base64 TEXT. D1's binding ships a BLOB as a JSON array of numbers, which costs ~25 ms of CPU per
+   600 KB upload and ~11 ms per read (the free plan allows 10); base64 costs about 2 ms. Rows saved earlier are BLOBs. */
+async function getImage(env, list, id, cors) {
+  const row = await env.DB.prepare('SELECT type, bytes, updated_at FROM images WHERE list = ?1 AND id = ?2').bind(list, id).first();
+  if (!row) return out({ error: 'not_found' }, 404, cors);
+  const bytes = typeof row.bytes === 'string' ? fromB64(row.bytes) : new Uint8Array(row.bytes);   // old BLOB rows arrive as number[]
+  return new Response(bytes, { status: 200, headers: { 'Content-Type': row.type, 'Cache-Control': 'public, max-age=86400', ETag: `"${row.updated_at}"`, ...cors } });
+}
+async function putImage(req, env, list, id, cors) {
+  const auth = await adminOk(req, env); if (auth !== true) return auth(cors);
+  const type = (req.headers.get('Content-Type') || '').split(';')[0].trim().toLowerCase();
+  if (!IMAGE_TYPES.has(type)) return out({ error: 'content_type' }, 415, cors);
+  const buf = await req.arrayBuffer();
+  if (buf.byteLength === 0) return out({ error: 'empty' }, 400, cors);
+  if (buf.byteLength > MAX_IMAGE) return out({ error: 'too_large', max: MAX_IMAGE }, 413, cors);
+  const now = Math.floor(Date.now() / 1000);
+  await env.DB.prepare('INSERT INTO images (list, id, type, bytes, size, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6) ON CONFLICT(list, id) DO UPDATE SET type = excluded.type, bytes = excluded.bytes, size = excluded.size, updated_at = excluded.updated_at')
+    .bind(list, id, type, toB64(new Uint8Array(buf)), buf.byteLength, now).run();
+  const url = new URL(req.url); url.search = `?v=${now}`;
+  return out({ url: url.toString(), updated: now, size: buf.byteLength }, 200, cors);
+}
+/* A photo the live list still shows is never deleted (409): e.g. a save that landed but whose answer the phone never got,
+   after which the phone believes the upload is unused. */
+async function deleteImage(req, env, list, id, cors) {
+  const auth = await adminOk(req, env); if (auth !== true) return auth(cors);
+  const row = await env.DB.prepare('SELECT doc FROM lists WHERE slug = ?1').bind(list).first();
+  const items = row ? JSON.parse(row.doc).items : null;
+  const key = (u) => (String(u).match(/\/images\/([a-z0-9-]+)(?:[?#]|$)/) || [])[1];
+  if (Array.isArray(items) && items.some(it => it && typeof it.image === 'string' && key(it.image) === id)) return out({ error: 'in_use' }, 409, cors);
+  await env.DB.prepare('DELETE FROM images WHERE list = ?1 AND id = ?2').bind(list, id).run();
+  return new Response(null, { status: 204, headers: { ...cors, 'Cache-Control': 'no-store' } });
+}
+
+/* ---------- bookings ---------- */
+/* k: the first 12 hex chars of each booking's token hash, so the booker's phone can tell its own booking from a newer one
+   by someone else (owner cleared it, item rebooked). Says nothing about the token itself. */
+async function activeBookings(env, list) {
+  const { results } = await env.DB.prepare('SELECT item, token_hash FROM bookings WHERE list = ?1 AND cancelled_at IS NULL').bind(list).all();
+  return { booked: results.map(r => r.item), k: Object.fromEntries(results.map(r => [r.item, String(r.token_hash).slice(0, 12)])) };
+}
+async function ownerBookings(env, list) {
+  const { results } = await env.DB.prepare('SELECT item, name, created_at FROM bookings WHERE list = ?1 AND cancelled_at IS NULL ORDER BY created_at DESC').bind(list).all();
+  return { bookings: results };
+}
+async function ownerUnbook(env, list, item, cors) {
+  const r = await env.DB.prepare("UPDATE bookings SET cancelled_at = ?1, cancelled_by = 'owner' WHERE list = ?2 AND item = ?3 AND cancelled_at IS NULL")
+    .bind(Math.floor(Date.now() / 1000), list, item).run();
+  if (r.meta && r.meta.changes === 1) return new Response(null, { status: 204, headers: { ...cors, 'Cache-Control': 'no-store' } });
+  return out({ error: 'not_found' }, 404, cors);
+}
+
+async function book(req, env, list, item, src, cors) {
+  if (!originOk(req, env)) return out({ error: 'forbidden' }, 403, cors);
+  if (!(req.headers.get('Content-Type') || '').toLowerCase().startsWith('application/json')) return out({ error: 'content_type' }, 415, cors);
+  const raw = await req.text();
+  if (raw.length > 2000) return out({ error: 'too_large' }, 413, cors);
+  let body; try { body = raw ? JSON.parse(raw) : {}; } catch { return out({ error: 'bad_json' }, 400, cors); }
+  const name = cleanName(body && body.name);
+
+  const ip = req.headers.get('CF-Connecting-IP') || '0.0.0.0';
+  if (env.BOOK_LIMIT) {
+    const { success } = await env.BOOK_LIMIT.limit({ key: ip });
+    if (!success) return out({ error: 'slow_down' }, 429, cors);
+  }
+
+  // The item must exist on the live list and still be wanted.
+  const data = await loadList(env, list, src);
+  if (!data) return out({ error: 'list_unavailable' }, 503, cors);
+  const it = Array.isArray(data.items) ? data.items.find(i => i && i.id === item) : null;
+  if (!it) return out({ error: 'unknown_item' }, 404, cors);
+  if (it.status === 'got' || it.status === 'dropped') return out({ error: 'gone' }, 410, cors);
+
+  const now = Math.floor(Date.now() / 1000);
+  const ipHash = await sha256(ip + '|' + (env.IP_SALT || 'wishlist'));
+  const lim = await env.DB.prepare(
+    'SELECT COALESCE(SUM(created_at > ?2), 0) AS recent, COALESCE(SUM(cancelled_at IS NULL AND list = ?3), 0) AS active FROM bookings WHERE ip_hash = ?1'
+  ).bind(ipHash, now - HOUR, list).first();
+  if (lim && (lim.recent >= MAX_PER_IP_HOUR || lim.active >= MAX_ACTIVE_PER_IP)) return out({ error: 'slow_down' }, 429, cors);
+
+  const token = randomToken();
+  try {
+    await env.DB.prepare('INSERT INTO bookings (list, item, name, token_hash, ip_hash, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)')
+      .bind(list, item, name, await sha256(token), ipHash, now).run();
+  } catch (e) {
+    if (/UNIQUE/i.test(String(e && e.message))) return out({ error: 'taken' }, 409, cors);
+    throw e;
+  }
+  return out({ token }, 201, cors);
+}
+
+async function unbook(req, env, list, item, cors) {
+  if (!originOk(req, env)) return out({ error: 'forbidden' }, 403, cors);
+  const m = (req.headers.get('Authorization') || '').match(/^Bearer ([A-Za-z0-9_-]{20,100})$/);
+  if (!m) return out({ error: 'unauthorized' }, 401, cors);
+  const r = await env.DB.prepare(
+    "UPDATE bookings SET cancelled_at = ?1, cancelled_by = 'guest' WHERE list = ?2 AND item = ?3 AND token_hash = ?4 AND cancelled_at IS NULL"
+  ).bind(Math.floor(Date.now() / 1000), list, item, await sha256(m[1])).run();
+  if (r.meta && r.meta.changes === 1) return new Response(null, { status: 204, headers: { ...cors, 'Cache-Control': 'no-store' } });
+  return out({ error: 'not_found' }, 404, cors);
+}
+
+/* ---------- helpers ---------- */
+/* Owner auth: returns true, or a function (cors) → error Response. Constant-time compare on SHA-256 digests. */
+async function adminOk(req, env) {
+  if (!env.ADMIN_TOKEN) return (cors) => out({ error: 'admin_disabled' }, 503, cors);
+  if (!originOk(req, env)) return (cors) => out({ error: 'forbidden' }, 403, cors);
+  const m = (req.headers.get('Authorization') || '').match(/^Bearer (\S{16,200})$/);
+  if (!m) return (cors) => out({ error: 'unauthorized' }, 401, cors);
+  const a = await sha256(m[1]), b = await sha256(String(env.ADMIN_TOKEN));
+  let diff = 0; for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0 ? true : (cors) => out({ error: 'unauthorized' }, 401, cors);
+}
+function allowedOrigins(env) { return String(env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean); }
+function originOk(req, env) { const o = req.headers.get('Origin'); return !o || allowedOrigins(env).includes(o); }
+function corsHeaders(req, env) {
+  const o = req.headers.get('Origin'), h = { Vary: 'Origin' };
+  if (o && allowedOrigins(env).includes(o)) {
+    h['Access-Control-Allow-Origin'] = o;
+    h['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+    h['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
+  }
+  return h;
+}
+function listSource(env, list) {
+  try { const map = typeof env.LISTS === 'string' ? JSON.parse(env.LISTS) : (env.LISTS || {}); return typeof map[list] === 'string' ? map[list] : null; }
+  catch { return null; }
+}
+/* The live document from D1 if the owner has saved one, else the repo JSON on GitHub Pages (edge-cached 30 s). */
+async function loadList(env, list, src) {
+  try {
+    const row = await env.DB.prepare('SELECT doc FROM lists WHERE slug = ?1').bind(list).first();
+    if (row) return JSON.parse(row.doc);
+  } catch { /* fall through to the static copy */ }
+  try {
+    const r = await fetch(src, { cf: { cacheTtl: 30, cacheEverything: true } });
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+function cleanName(v) {
+  if (typeof v !== 'string') return null;
+  const s = v.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, '').replace(/\s+/g, ' ').trim();
+  const cut = Array.from(s).slice(0, 40).join('');
+  return cut || null;
+}
+async function sha256(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function randomToken() {
+  const b = crypto.getRandomValues(new Uint8Array(32));
+  return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+/* workerd has Uint8Array.prototype.toBase64 / Uint8Array.fromBase64; the loops are for Node (tools/worker-test.mjs). */
+function toB64(u8) {
+  if (u8.toBase64) return u8.toBase64();
+  let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+function fromB64(s) {
+  if (Uint8Array.fromBase64) return Uint8Array.fromBase64(s);
+  const b = atob(s), u8 = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u8[i] = b.charCodeAt(i);
+  return u8;
+}
+function out(body, status, cors) {
+  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...cors } });
+}
