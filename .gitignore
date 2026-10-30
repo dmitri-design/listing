@@ -1,0 +1,10 @@
+.DS_Store
+photos to add/
+_build/raw/
+*.token
+.env
+.planning/
+.claude/launch.json
+_build/images.json
+CLAUDE.md
+_build/

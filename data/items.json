@@ -1,0 +1,1071 @@
+{
+  "updated": "2026-10-30",
+  "site": {
+    "owner": "Dmitri",
+    "title": {
+      "en": "Wishlist <i>2026</i>",
+      "ru": "Вишлист <i>2026</i>"
+    },
+    "brand": {
+      "en": "things I'd be happy to get",
+      "ru": "то, чему я буду рад"
+    },
+    "tagline": {
+      "en": "Dmitri's list. Tap a card: price, where to look, and whether it exists in Europe, Turkey or Russia.",
+      "ru": "Список Димы. Нажми на карточку: цена, где искать и есть ли оно в Европе, Турции и России."
+    },
+    "legend": {
+      "en": "✓ sold officially &nbsp;·&nbsp; ~ import or resale &nbsp;·&nbsp; ✗ not there",
+      "ru": "✓ продаётся официально &nbsp;·&nbsp; ~ параллельный импорт или ресейл &nbsp;·&nbsp; ✗ нет"
+    },
+    "footer": {
+      "en": "Street prices in USD, October 2026. Turkey runs higher on anything imported. Cards swing because wishes do.",
+      "ru": "Розничные цены в долларах, октябрь 2026. В Турции всё импортное дороже. Карточки качаются, потому что желания тоже."
+    },
+    "meta": {
+      "en": "Dmitri's wishlist 2026 — 22 things on a wire, from a coffee scale to a Tesla. Tap a card for price and where to look.",
+      "ru": "Вишлист Димы на 2026 — 22 вещи на верёвке, от кофейных весов до Теслы. Нажми на карточку: цена и где искать."
+    }
+  },
+  "tiers": [
+    {
+      "id": "normal",
+      "c": "var(--t-normal)",
+      "pin": "#9fc7b6",
+      "name": {
+        "en": "Normal",
+        "ru": "Норм"
+      },
+      "range": {
+        "en": "under $500",
+        "ru": "до $500"
+      },
+      "blurb": {
+        "en": "Stuff that actually gets bought.",
+        "ru": "То, что реально покупается."
+      },
+      "short": {
+        "en": "Normal",
+        "ru": "Норм"
+      }
+    },
+    {
+      "id": "rich",
+      "c": "var(--t-rich)",
+      "pin": "#e8b4a6",
+      "name": {
+        "en": "Only for rich friends",
+        "ru": "Только для богатых друзей"
+      },
+      "range": {
+        "en": "$500 – $5,000",
+        "ru": "$500 – $5 000"
+      },
+      "blurb": {
+        "en": "For the friend who just closed a round.",
+        "ru": "Для друга, который только что закрыл раунд."
+      },
+      "short": {
+        "en": "Rich friends",
+        "ru": "Для богатых"
+      }
+    },
+    {
+      "id": "god",
+      "c": "var(--t-god)",
+      "pin": "#e3c46a",
+      "name": {
+        "en": "Hand of God",
+        "ru": "Уровень «рука Бога»"
+      },
+      "range": {
+        "en": "$5,000 and up",
+        "ru": "от $5 000"
+      },
+      "blurb": {
+        "en": "Nobody's buying these. They hang here for the story.",
+        "ru": "Это никто не купит. Висит ради истории."
+      },
+      "short": {
+        "en": "Hand of God",
+        "ru": "Рука Бога"
+      }
+    }
+  ],
+  "ui": {
+    "approx": {
+      "en": "approx. price",
+      "ru": "примерная цена"
+    },
+    "where": {
+      "en": "Where to look",
+      "ru": "Где искать"
+    },
+    "back": {
+      "en": "tap to flip back",
+      "ru": "нажми, чтобы вернуть"
+    },
+    "tap": {
+      "en": "tap to flip",
+      "ru": "переверни"
+    },
+    "things": {
+      "en": "things",
+      "ru": "шт."
+    },
+    "swipe": {
+      "en": "swipe →",
+      "ru": "листай →"
+    },
+    "sketch": {
+      "en": "sketch · photo soon",
+      "ru": "эскиз · фото будет"
+    },
+    "eu": {
+      "en": "Europe",
+      "ru": "Европа"
+    },
+    "tr": {
+      "en": "Turkey",
+      "ru": "Турция"
+    },
+    "ru": {
+      "en": "Russia",
+      "ru": "Россия"
+    },
+    "got": {
+      "en": "got it",
+      "ru": "уже есть"
+    },
+    "booked": {
+      "en": "booked",
+      "ru": "забронировано"
+    },
+    "loading": {
+      "en": "loading the wire…",
+      "ru": "тяну верёвку…"
+    },
+    "offline": {
+      "en": "Couldn't load the list. Open the link again when you're online.",
+      "ru": "Не получилось загрузить список. Открой ссылку ещё раз, когда появится сеть."
+    }
+  },
+  "items": [
+    {
+      "id": "wilfa",
+      "tier": "normal",
+      "name": {
+        "en": "Wilfa Uni Mini scale",
+        "ru": "Весы Wilfa Uni Mini"
+      },
+      "desc": {
+        "en": "Pocket coffee scale: 0.1 g, USB-C, fits a jacket pocket. The take-it-outside one.",
+        "ru": "Карманные кофейные весы: 0,1 г, USB-C, влезают в карман куртки. Те, что с собой."
+      },
+      "price": "~$55",
+      "note": {
+        "en": "599 NOK · £42–50",
+        "ru": "599 NOK · £42–50"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "n",
+        "ru": "n"
+      },
+      "where": [
+        {
+          "t": "wilfa.com",
+          "u": "https://wilfa.com/products/uni-mini-scale"
+        },
+        {
+          "t": "redber.co.uk",
+          "u": "https://redber.co.uk"
+        },
+        {
+          "t": "crema.fi",
+          "u": "https://crema.fi"
+        }
+      ],
+      "order": 1,
+      "status": "wanted",
+      "kind": "cut",
+      "image": "img/wilfa.webp",
+      "illustration": null,
+      "w": 415,
+      "h": 440
+    },
+    {
+      "id": "mic",
+      "tier": "normal",
+      "name": {
+        "en": "DJI Mic Mini 2",
+        "ru": "DJI Mic Mini 2"
+      },
+      "desc": {
+        "en": "Tiny wireless mic for clips, calls and raid videos. 2 transmitters + receiver.",
+        "ru": "Крошечный беспроводной микрофон для роликов, созвонов и рейд-видео. 2 передатчика + приёмник."
+      },
+      "price": "$55–100",
+      "note": {
+        "en": "mobile kit €49 · camera kit €89",
+        "ru": "мобильный набор €49 · камерный €89"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "y",
+        "ru": "g"
+      },
+      "where": [
+        {
+          "t": "store.dji.com",
+          "u": "https://store.dji.com/"
+        },
+        {
+          "t": "Amazon.de",
+          "u": "https://www.amazon.de"
+        },
+        {
+          "t": "MediaMarkt"
+        }
+      ],
+      "order": 2,
+      "status": "wanted",
+      "kind": "cut",
+      "image": "img/mic.webp",
+      "illustration": null,
+      "w": 434,
+      "h": 295
+    },
+    {
+      "id": "puncube",
+      "tier": "normal",
+      "name": {
+        "en": "PunCube Mech Wallet",
+        "ru": "Картхолдер PunCube Mech"
+      },
+      "desc": {
+        "en": "CNC metal cardholder with a clicky one-hand card slide. RFID blocking, 6 cards.",
+        "ru": "Металлический картхолдер с щёлкающей выдвижкой карт одной рукой. RFID-защита, 6 карт."
+      },
+      "price": "$69–99",
+      "note": {
+        "en": "aluminum · titanium costs more",
+        "ru": "алюминий · титан дороже"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "y",
+        "ru": "g"
+      },
+      "where": [
+        {
+          "t": "puncube.com",
+          "u": "https://puncube.com/en-us/products/mech-wallet"
+        },
+        {
+          "t": "Amazon (PUNCUBE store)"
+        }
+      ],
+      "order": 3,
+      "status": "wanted",
+      "kind": "cut",
+      "image": "img/puncube.webp",
+      "illustration": null,
+      "w": 415,
+      "h": 440
+    },
+    {
+      "id": "osprey",
+      "tier": "normal",
+      "name": {
+        "en": "Osprey Daylite Plus",
+        "ru": "Рюкзак Osprey Daylite Plus"
+      },
+      "desc": {
+        "en": "20 L everyday daypack, 585 g, lifetime guarantee. Boring-good.",
+        "ru": "Городской рюкзак 20 л, 585 г, пожизненная гарантия. Скучно-хороший."
+      },
+      "price": "~$80",
+      "note": {
+        "en": "€75–90",
+        "ru": "€75–90"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "y",
+        "ru": "g"
+      },
+      "where": [
+        {
+          "t": "osprey.com",
+          "u": "https://www.osprey.com/daylite-plus-dayltpluss21-795"
+        },
+        {
+          "t": "Amazon.de",
+          "u": "https://www.amazon.de"
+        },
+        {
+          "t": {
+            "en": "any outdoor shop",
+            "ru": "любой аутдор-магазин"
+          }
+        }
+      ],
+      "order": 4,
+      "status": "wanted",
+      "kind": "cut",
+      "image": "img/osprey.webp",
+      "illustration": null,
+      "w": 315,
+      "h": 440
+    },
+    {
+      "id": "psa1",
+      "tier": "normal",
+      "name": {
+        "en": "RØDE PSA1+ boom arm",
+        "ru": "Пантограф RØDE PSA1+"
+      },
+      "desc": {
+        "en": "The desk arm every podcast uses: 84 cm reach, silent springs, holds 1.2 kg.",
+        "ru": "Настольная стойка, как у всех подкастов: вылет 84 см, бесшумные пружины, держит 1,2 кг."
+      },
+      "price": "~$135",
+      "note": {
+        "en": "€137",
+        "ru": "€137"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "y",
+        "ru": "g"
+      },
+      "where": [
+        {
+          "t": "rode.com",
+          "u": "https://rode.com/"
+        },
+        {
+          "t": "Thomann.de",
+          "u": "https://www.thomann.de"
+        },
+        {
+          "t": "Hepsiburada (TR)",
+          "u": "https://www.hepsiburada.com"
+        }
+      ],
+      "order": 5,
+      "status": "wanted",
+      "kind": "cut",
+      "image": null,
+      "illustration": "arm"
+    },
+    {
+      "id": "adidas",
+      "tier": "normal",
+      "name": {
+        "en": "adidas × SpongeBob Stan Smith",
+        "ru": "adidas × SpongeBob Stan Smith"
+      },
+      "desc": {
+        "en": "The 2025 SpongeBob drop (JQ6779). Resale is under retail right now, that won't last.",
+        "ru": "Дроп 2025 года со Спанч Бобом (JQ6779). На ресейле сейчас дешевле ритейла, это ненадолго."
+      },
+      "price": "~$140",
+      "note": {
+        "en": "retail · resale ~$80",
+        "ru": "ритейл · ресейл ~$80"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "g",
+        "ru": "g"
+      },
+      "where": [
+        {
+          "t": "StockX",
+          "u": "https://stockx.com/adidas-stan-smith-spongebob-squarepants"
+        },
+        {
+          "t": "eBay.de",
+          "u": "https://www.ebay.de"
+        },
+        {
+          "t": {
+            "en": "adidas outlets",
+            "ru": "аутлеты adidas"
+          }
+        }
+      ],
+      "order": 6,
+      "status": "wanted",
+      "kind": "cut",
+      "image": "img/adidas.webp",
+      "illustration": null,
+      "w": 440,
+      "h": 188
+    },
+    {
+      "id": "whoop",
+      "tier": "normal",
+      "name": {
+        "en": "Whoop 5.0 / MG",
+        "ru": "Браслет Whoop 5.0 / MG"
+      },
+      "desc": {
+        "en": "Screenless strain-vs-recovery band. Hardware is free, you pay the membership.",
+        "ru": "Браслет без экрана: нагрузка против восстановления. Железо бесплатно, платишь за подписку."
+      },
+      "price": {
+        "en": "$199/yr",
+        "ru": "$199/год"
+      },
+      "note": {
+        "en": "One plan · Peak $239 · Life $359",
+        "ru": "план One · Peak $239 · Life $359"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "g",
+        "ru": "n"
+      },
+      "where": [
+        {
+          "t": "whoop.com",
+          "u": "https://www.whoop.com/"
+        }
+      ],
+      "order": 7,
+      "status": "wanted",
+      "kind": "cut",
+      "image": "img/whoop.webp",
+      "illustration": null,
+      "w": 342,
+      "h": 440
+    },
+    {
+      "id": "freeclip",
+      "tier": "normal",
+      "name": {
+        "en": "Huawei FreeClip 2",
+        "ru": "Huawei FreeClip 2"
+      },
+      "desc": {
+        "en": "Open-ear clip earbuds, 9 h battery, IP57. The pair people ask about.",
+        "ru": "Открытые наушники-клипсы, 9 ч, IP57. Та пара, про которую спрашивают."
+      },
+      "price": "~$200",
+      "note": {
+        "en": "€199 list · €169–185 street",
+        "ru": "€199 по прайсу · €169–185 в рознице"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "y",
+        "ru": "y"
+      },
+      "where": [
+        {
+          "t": "consumer.huawei.com",
+          "u": "https://consumer.huawei.com/"
+        },
+        {
+          "t": "Amazon.de",
+          "u": "https://www.amazon.de"
+        },
+        {
+          "t": "Huawei Store TR"
+        }
+      ],
+      "order": 8,
+      "status": "wanted",
+      "kind": "cut",
+      "image": null,
+      "illustration": "clip"
+    },
+    {
+      "id": "rode",
+      "tier": "normal",
+      "kind": "photo",
+      "name": {
+        "en": "RØDE studio mic",
+        "ru": "Студийный микрофон RØDE"
+      },
+      "desc": {
+        "en": "Large-diaphragm studio mic for streams and interviews. XLR + USB, 32-bit float so a laugh doesn't clip.",
+        "ru": "Крупномембранный студийник для стримов и интервью. XLR + USB, 32-bit float — смех не перегрузит."
+      },
+      "price": "~$250",
+      "note": {
+        "en": "$220–250",
+        "ru": "$220–250"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "y",
+        "ru": "g"
+      },
+      "where": [
+        {
+          "t": "rode.com",
+          "u": "https://rode.com/"
+        },
+        {
+          "t": "Thomann.de",
+          "u": "https://www.thomann.de"
+        },
+        {
+          "t": "Amazon.de",
+          "u": "https://www.amazon.de"
+        }
+      ],
+      "order": 9,
+      "status": "wanted",
+      "image": "img/rode.webp",
+      "illustration": null,
+      "w": 353,
+      "h": 440
+    },
+    {
+      "id": "slnt",
+      "tier": "normal",
+      "name": {
+        "en": "SLNT E3 Faraday backpack",
+        "ru": "Рюкзак SLNT E3 Faraday"
+      },
+      "desc": {
+        "en": "23 L backpack with MIL-STD Faraday sleeves: phone and laptop go dark.",
+        "ru": "Рюкзак 23 л с экранирующими карманами MIL-STD: телефон и ноут пропадают из эфира."
+      },
+      "price": "~$340",
+      "note": {
+        "en": "ships from the US + EU duty",
+        "ru": "едет из США + пошлина в ЕС"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "g",
+        "ru": "n"
+      },
+      "where": [
+        {
+          "t": "slnt.com",
+          "u": "https://slnt.com/products/e3-faraday-backpack"
+        },
+        {
+          "t": {
+            "en": "Faraday sleeve on Amazon.de (cheap route)",
+            "ru": "экранирующий чехол на Amazon.de (дешёвый путь)"
+          }
+        }
+      ],
+      "order": 10,
+      "status": "wanted",
+      "kind": "cut",
+      "image": "img/slnt.webp",
+      "illustration": null,
+      "w": 376,
+      "h": 440
+    },
+    {
+      "id": "oura",
+      "tier": "normal",
+      "name": {
+        "en": "Oura Ring 4",
+        "ru": "Кольцо Oura Ring 4"
+      },
+      "desc": {
+        "en": "Titanium smart ring: sleep, recovery, stress. No screen, a week of battery.",
+        "ru": "Титановое смарт-кольцо: сон, восстановление, стресс. Без экрана, неделя заряда."
+      },
+      "price": "$349+",
+      "note": {
+        "en": "+ membership €69.99/yr",
+        "ru": "+ подписка €69,99/год"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "g",
+        "ru": "g"
+      },
+      "where": [
+        {
+          "t": "ouraring.com",
+          "u": "https://ouraring.com/"
+        },
+        {
+          "t": "Amazon.de",
+          "u": "https://www.amazon.de"
+        }
+      ],
+      "order": 11,
+      "status": "wanted",
+      "kind": "cut",
+      "image": null,
+      "illustration": "ring"
+    },
+    {
+      "id": "rc",
+      "tier": "normal",
+      "name": {
+        "en": "RC drift car, 1/10",
+        "ru": "RC дрифт-машина 1/10"
+      },
+      "desc": {
+        "en": "A real drifter, not a toy. HPI RS4 Sport 3 (AWD, ~$300) or MST RMX 2.5 (RWD, ~$450).",
+        "ru": "Настоящий дрифтер, не игрушка. HPI RS4 Sport 3 (AWD, ~$300) или MST RMX 2.5 (RWD, ~$450)."
+      },
+      "price": "$300–450",
+      "note": {
+        "en": "+ ~$60 for a 2nd battery & tires",
+        "ru": "+ ~$60 на второй аккум и резину"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "y",
+        "ru": "y"
+      },
+      "where": [
+        {
+          "t": "eurorc.com",
+          "u": "https://www.eurorc.com/search/?q=drift"
+        },
+        {
+          "t": "Amazon.de",
+          "u": "https://www.amazon.de"
+        },
+        {
+          "t": {
+            "en": "hobby shops, Kadıköy",
+            "ru": "хобби-магазины, Кадыкёй"
+          }
+        }
+      ],
+      "order": 12,
+      "status": "wanted",
+      "kind": "cut",
+      "image": "img/rc.webp",
+      "illustration": null,
+      "w": 440,
+      "h": 177
+    },
+    {
+      "id": "pocket4",
+      "tier": "normal",
+      "name": {
+        "en": "DJI Osmo Pocket 4",
+        "ru": "DJI Osmo Pocket 4"
+      },
+      "desc": {
+        "en": "The pocket gimbal camera, 4K/240 fps. Creator Combo adds mic, light and tripod.",
+        "ru": "Карманная камера на стабилизаторе, 4K/240 fps. Creator Combo — с микрофоном, светом и штативом."
+      },
+      "price": "~$500",
+      "note": {
+        "en": "Creator Combo ~$650",
+        "ru": "Creator Combo ~$650"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "y",
+        "ru": "g"
+      },
+      "where": [
+        {
+          "t": "store.dji.com",
+          "u": "https://store.dji.com/"
+        },
+        {
+          "t": "MediaMarkt"
+        },
+        {
+          "t": "Amazon.de",
+          "u": "https://www.amazon.de"
+        }
+      ],
+      "order": 13,
+      "status": "wanted",
+      "kind": "cut",
+      "image": null,
+      "illustration": "gimbal"
+    },
+    {
+      "id": "lg",
+      "tier": "rich",
+      "name": {
+        "en": "LG UltraGear 32GS95UE",
+        "ru": "Монитор LG UltraGear 32GS95UE"
+      },
+      "desc": {
+        "en": "32″ 4K OLED at 240 Hz (or 1080p at 480 Hz). Design and gaming on one panel.",
+        "ru": "32″ 4K OLED на 240 Гц (или 1080p на 480 Гц). Дизайн и игры на одной панели."
+      },
+      "price": "$1,000–1,100",
+      "note": {
+        "en": "list $1,400 · on sale most months",
+        "ru": "по прайсу $1 400 · почти всегда со скидкой"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "g",
+        "ru": "g"
+      },
+      "where": [
+        {
+          "t": "lg.com",
+          "u": "https://www.lg.com/"
+        },
+        {
+          "t": "Amazon.de",
+          "u": "https://www.amazon.de"
+        },
+        {
+          "t": "MediaMarkt"
+        }
+      ],
+      "order": 14,
+      "status": "wanted",
+      "kind": "cut",
+      "image": "img/lg.webp",
+      "illustration": null,
+      "w": 440,
+      "h": 393
+    },
+    {
+      "id": "imac",
+      "tier": "rich",
+      "name": {
+        "en": "iMac 24″, blue",
+        "ru": "iMac 24″, синий"
+      },
+      "desc": {
+        "en": "The blue one. M6 refresh expected Nov 6, 2026, same money. The desk statement.",
+        "ru": "Тот самый синий. Обновление на M6 ждут 6 ноября 2026, за те же деньги. Украшение стола."
+      },
+      "price": "$1,299–1,699",
+      "note": {
+        "en": "Turkey: +40% tax",
+        "ru": "в Турции +40% налога"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "y",
+        "ru": "g"
+      },
+      "where": [
+        {
+          "t": "apple.com",
+          "u": "https://www.apple.com/imac/"
+        },
+        {
+          "t": "MediaMarkt"
+        },
+        {
+          "t": "Apple TR"
+        }
+      ],
+      "order": 15,
+      "status": "wanted",
+      "kind": "cut",
+      "image": "img/imac.webp",
+      "illustration": null,
+      "w": 188,
+      "h": 391
+    },
+    {
+      "id": "macmini",
+      "tier": "rich",
+      "name": {
+        "en": "Mac mini M5 Pro",
+        "ru": "Mac mini M5 Pro"
+      },
+      "desc": {
+        "en": "The local-AI box: 48–64 GB RAM, 1 TB, quiet enough for the desk. The workhorse.",
+        "ru": "Коробка для локального ИИ: 48–64 ГБ RAM, 1 ТБ, тихая, можно на стол. Рабочая лошадка."
+      },
+      "price": "$1,699–3,000",
+      "note": {
+        "en": "64 GB config ~$2,500–3,000",
+        "ru": "конфиг на 64 ГБ ~$2 500–3 000"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "y",
+        "ru": "g"
+      },
+      "where": [
+        {
+          "t": "apple.com",
+          "u": "https://www.apple.com/mac-mini/"
+        },
+        {
+          "t": "MediaMarkt"
+        },
+        {
+          "t": "Apple TR"
+        }
+      ],
+      "order": 16,
+      "status": "wanted",
+      "kind": "cut",
+      "image": "img/macmini.webp",
+      "illustration": null,
+      "w": 440,
+      "h": 352
+    },
+    {
+      "id": "clash",
+      "tier": "rich",
+      "name": {
+        "en": "Clash de Cartier ring, small",
+        "ru": "Кольцо Clash de Cartier, small"
+      },
+      "desc": {
+        "en": "The studded 18k yellow-gold band, ~6.4 mm. Get sized in a boutique, it runs tight.",
+        "ru": "Шипастое кольцо из жёлтого золота 18k, ~6,4 мм. Размер мерить в бутике, сидит плотно."
+      },
+      "price": "$2,400–3,000",
+      "note": {
+        "en": "resale $2,200–4,250",
+        "ru": "ресейл $2 200–4 250"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "y",
+        "ru": "g"
+      },
+      "where": [
+        {
+          "t": "cartier.com",
+          "u": "https://www.cartier.com/"
+        },
+        {
+          "t": {
+            "en": "Istanbul boutiques (İstinyePark, Zorlu)",
+            "ru": "бутики в Стамбуле (İstinyePark, Zorlu)"
+          }
+        },
+        {
+          "t": "Chrono24 / 1stdibs",
+          "u": "https://www.chrono24.com"
+        }
+      ],
+      "order": 17,
+      "status": "wanted",
+      "kind": "cut",
+      "image": null,
+      "illustration": "studring"
+    },
+    {
+      "id": "loro",
+      "tier": "god",
+      "name": {
+        "en": "Loro Piana, one piece",
+        "ru": "Loro Piana, одна вещь"
+      },
+      "desc": {
+        "en": "Cashmere crewneck or polo ($1.5–2.5K), or the Traveller jacket ($4–5K). Here by vibe, not price.",
+        "ru": "Кашемировый свитер или поло ($1,5–2,5K) или куртка Traveller ($4–5K). Тут по вайбу, не по цене."
+      },
+      "price": "$1,500–5,000",
+      "note": {
+        "en": "Traveller jacket ~$4,000–5,000",
+        "ru": "куртка Traveller ~$4 000–5 000"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "y",
+        "ru": "n"
+      },
+      "where": [
+        {
+          "t": "loropiana.com",
+          "u": "https://www.loropiana.com/"
+        },
+        {
+          "t": {
+            "en": "Milan / Paris boutiques",
+            "ru": "бутики в Милане / Париже"
+          }
+        },
+        {
+          "t": "İstinyePark"
+        }
+      ],
+      "order": 18,
+      "status": "wanted",
+      "kind": "cut",
+      "image": null,
+      "illustration": "sweater"
+    },
+    {
+      "id": "breitling",
+      "tier": "god",
+      "name": {
+        "en": "Breitling Navitimer B01 43",
+        "ru": "Breitling Navitimer B01 43"
+      },
+      "desc": {
+        "en": "The pilot's watch since 1952: slide-rule bezel, in-house chronograph. The realistic one of the three.",
+        "ru": "Пилотские часы с 1952-го: безель-логарифмическая линейка, свой хронограф. Самые реальные из трёх."
+      },
+      "price": "$10,300",
+      "note": {
+        "en": "official · pre-owned ~$6,500",
+        "ru": "официально · б/у ~$6 500"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "y",
+        "ru": "g"
+      },
+      "where": [
+        {
+          "t": "breitling.com",
+          "u": "https://www.breitling.com/"
+        },
+        {
+          "t": {
+            "en": "Breitling boutique, Istanbul",
+            "ru": "бутик Breitling, Стамбул"
+          }
+        },
+        {
+          "t": "Chrono24",
+          "u": "https://www.chrono24.com"
+        }
+      ],
+      "order": 19,
+      "status": "wanted",
+      "kind": "cut",
+      "image": "img/breitling.webp",
+      "illustration": null,
+      "w": 270,
+      "h": 440
+    },
+    {
+      "id": "santos",
+      "tier": "god",
+      "name": {
+        "en": "Santos de Cartier, large, steel",
+        "ru": "Santos de Cartier, large, сталь"
+      },
+      "desc": {
+        "en": "The first pilot's wristwatch (1904). Square case, screws on the bezel. Steel is the sane version.",
+        "ru": "Первые пилотские наручные часы (1904). Квадратный корпус, винты на безеле. Сталь — разумная версия."
+      },
+      "price": "~$9,200",
+      "note": {
+        "en": "pre-owned $7,000–7,500",
+        "ru": "б/у $7 000–7 500"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "y",
+        "ru": "g"
+      },
+      "where": [
+        {
+          "t": "cartier.com",
+          "u": "https://www.cartier.com/"
+        },
+        {
+          "t": {
+            "en": "Cartier boutiques",
+            "ru": "бутики Cartier"
+          }
+        },
+        {
+          "t": "Chrono24",
+          "u": "https://www.chrono24.com"
+        }
+      ],
+      "order": 20,
+      "status": "wanted",
+      "kind": "cut",
+      "image": null,
+      "illustration": "squarewatch"
+    },
+    {
+      "id": "rolex",
+      "tier": "god",
+      "name": {
+        "en": "Rolex GMT-Master II",
+        "ru": "Rolex GMT-Master II"
+      },
+      "desc": {
+        "en": "Two time zones, the Pan Am pilots' watch from 1955. Pepsi or Batman bezel. Hangs here for the story.",
+        "ru": "Два часовых пояса, часы пилотов Pan Am с 1955-го. Безель Pepsi или Batman. Висит ради истории."
+      },
+      "price": "~$11,800",
+      "note": {
+        "en": "retail · waitlist at dealers",
+        "ru": "ритейл · лист ожидания у дилеров"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "y",
+        "ru": "g"
+      },
+      "where": [
+        {
+          "t": {
+            "en": "authorised dealers (waitlist)",
+            "ru": "официальные дилеры (лист ожидания)"
+          }
+        },
+        {
+          "t": "Rolex Certified Pre-Owned",
+          "u": "https://www.rolex.com/"
+        },
+        {
+          "t": "Chrono24",
+          "u": "https://www.chrono24.com"
+        }
+      ],
+      "order": 21,
+      "status": "wanted",
+      "kind": "cut",
+      "image": null,
+      "illustration": "gmtwatch"
+    },
+    {
+      "id": "tesla",
+      "tier": "god",
+      "kind": "photo",
+      "name": {
+        "en": "Tesla Model Y Performance 2026, black",
+        "ru": "Tesla Model Y Performance 2026, чёрная"
+      },
+      "desc": {
+        "en": "460 hp, 0–100 in 3.5 s, ~580 km. Buy it in the EU, not Turkey: the tax gap is a second car.",
+        "ru": "460 л.с., 0–100 за 3,5 с, ~580 км. Брать в ЕС, не в Турции: разница в налогах — вторая машина."
+      },
+      "price": "~$67K",
+      "note": {
+        "en": "€61,990 EU · Turkey ~$115K",
+        "ru": "€61 990 в ЕС · Турция ~$115K"
+      },
+      "avail": {
+        "eu": "y",
+        "tr": "y",
+        "ru": "g"
+      },
+      "where": [
+        {
+          "t": {
+            "en": "tesla.com configurator (EU or TR)",
+            "ru": "конфигуратор tesla.com (ЕС или TR)"
+          },
+          "u": "https://www.tesla.com/"
+        }
+      ],
+      "order": 22,
+      "status": "wanted",
+      "image": "img/tesla.webp",
+      "illustration": null,
+      "w": 440,
+      "h": 263
+    }
+  ]
+}

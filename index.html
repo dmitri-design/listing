@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wishlist 2026 · Dmitri</title>
+<meta name="description" content="Dmitri's wishlist 2026 — 22 things on a wire, from a coffee scale to a Tesla. Tap a card for price and where to look.">
+<meta name="theme-color" content="#f4efe4">
+<meta name="robots" content="noindex">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Wishlist 2026 · Dmitri">
+<meta property="og:description" content="22 things on a wire, from a coffee scale to a Tesla. Tap a card for price and where to look.">
+<meta property="og:url" content="https://dmitri-design.github.io/listing/">
+<meta property="og:image" content="https://dmitri-design.github.io/listing/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23f4efe4'/%3E%3Cpath d='M6 20 Q32 34 58 20' stroke='%234f4639' stroke-width='3' fill='none'/%3E%3Crect x='20' y='24' width='24' height='32' rx='4' fill='%23fffdf8' stroke='%23d9d0bd' stroke-width='2'/%3E%3Crect x='29' y='14' width='6' height='16' rx='2' fill='%23c9a06b'/%3E%3C/svg%3E">
+<link rel="preload" href="data/items.json" as="fetch" crossorigin>
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="pin" viewBox="0 0 28 56">
+      <path d="M9 2 h4 l2 22 l-2 30 h-4 l-1 -30 z" fill="currentColor" stroke="rgba(0,0,0,.28)" stroke-width="1"/>
+      <path d="M15 2 h4 l1 22 l-1 30 h-4 l-2 -30 z" fill="currentColor" stroke="rgba(0,0,0,.28)" stroke-width="1"/>
+      <path d="M8 17 c-3 0 -3 7 0 7 M20 17 c3 0 3 7 0 7" fill="none" stroke="#6b6b6b" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M8 24 h12" stroke="#6b6b6b" stroke-width="2.2" stroke-linecap="round"/>
+      <rect x="9" y="3" width="2" height="48" fill="rgba(255,255,255,.28)"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div id="app">
+  <header class="hero">
+    <div class="topbar">
+      <div class="brand"></div>
+      <div class="lang" role="group" aria-label="Language"><button type="button" data-lang="en">EN</button><button type="button" data-lang="ru">RU</button></div>
+    </div>
+    <h1 id="title"></h1>
+    <p class="tag"></p>
+    <svg class="swash" viewBox="0 0 160 14" fill="none" aria-hidden="true"><path d="M2 9 C 40 2, 80 12, 158 5" stroke="#b9a37a" stroke-width="1.6" stroke-linecap="round"/></svg>
+    <nav class="tiernav" id="tiernav"></nav>
+    <div class="legend"></div>
+  </header>
+
+  <main id="tiers"><p class="msg"><span class="l-en">loading the wire…</span><span class="l-ru">тяну верёвку…</span></p></main>
+
+  <footer>
+    <div class="bar"></div>
+    <span class="txt"></span>
+  </footer>
+</div>
+
+<script src="assets/app.js" defer></script>
+</body>
+</html>
