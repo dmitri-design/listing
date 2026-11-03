@@ -16,20 +16,26 @@ const ART = {
 /* ===================================================================== */
 const app = document.getElementById('app');
 const $ = (sel, root) => (root || document).querySelector(sel);
-const L = () => app.classList.contains('ru') ? 'ru' : 'en';
+let L2 = 'ru';   // the list's second language (site.lang2); 'ru' until the list loads. English is always the first.
+const L = () => app.classList.contains('alt') ? L2 : 'en';
+const RTL = () => !!(window.Langs && Langs.info(L2).rtl);
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 /* bilingual string → two spans; data text is escaped, `raw` only for site strings that carry markup (<i>, &nbsp;) */
 const t = (v, raw) => {
   const f = raw ? (x) => x : esc;
-  if (v && typeof v === 'object') return `<span class="l-en" lang="en">${f(v.en ?? '')}</span><span class="l-ru" lang="ru">${f(v.ru ?? v.en ?? '')}</span>`;
+  if (v && typeof v === 'object') return `<span class="l-en" lang="en">${f(v.en ?? '')}</span><span class="l-2" lang="${L2}"${RTL() ? ' dir="rtl"' : ''}>${f(v[L2] ?? v.en ?? '')}</span>`;
   return v == null ? '' : f(v);
 };
 /* the same value as plain text in one language (tab title); a plain string serves both */
-const pick = (v, l) => v && typeof v === 'object' ? String(v[l] ?? v.en ?? '') : (v == null ? '' : String(v));
+const pick = (v, l) => { if (!v || typeof v !== 'object') return v ?? ''; const k = l === 'alt' ? L2 : l; return v[k] ?? v.en ?? ''; };   // a string in one language ('alt' = the second one)
 const art = (k) => (ART[k] || ART.box).replace('<svg ', '<svg width="100%" height="100%" ');
 const safeUrl = (u) => (typeof u === 'string' && /^https?:\/\//i.test(u)) ? u : null;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const MARK = { y: '✓', g: '~', n: '✗' };
+/* the markets a list marks availability for (site.markets, ISO codes, EU as a block; up to six fit a card back) */
+const MARKETS = () => { const m = DATA && DATA.site && Array.isArray(DATA.site.markets) && DATA.site.markets.length ? DATA.site.markets : ['EU', 'TR', 'RU']; return m.map(c => String(c).toUpperCase()).filter(c => /^[A-Z]{2}$/.test(c)).slice(0, 6); };
+const availOf = (it, code) => (it.avail && (it.avail[code] ?? it.avail[code.toLowerCase()])) || 'n';
+const regionLabel = (code) => ({ en: window.Langs ? Langs.regionName(code, 'en') : code, [L2]: window.Langs ? Langs.regionName(code, L2) : code });
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
 const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
 
@@ -65,54 +71,74 @@ $('#soundGate') && $('#soundGate').addEventListener('click', () => {
 /* ---------- language: the Velvet "state change" switch (off = EN, on = RU) with its detent sound ---------- */
 const TITLE0 = { en: 'Wishlist 2026 · Dmitri', ru: 'Вишлист 2026 · Дима' };   // the tab title before the list loads, or if it never does
 function setLang(l, save) {
-  app.classList.toggle('ru', l === 'ru');
-  document.documentElement.lang = l;
+  const alt = l !== 'en';
+  app.classList.toggle('alt', alt);
+  document.documentElement.lang = alt ? L2 : 'en';
   const sw = $('#langToggle');
-  if (sw) { sw.classList.toggle('is-on', l === 'ru'); sw.setAttribute('aria-checked', l === 'ru' ? 'true' : 'false'); }
-  document.querySelectorAll('.lsw-lbl').forEach(b => b.classList.toggle('on', b.dataset.lang === l));
-  if (DATA) { const o = pick(DATA.site.owner, l); document.title = pick(DATA.site.title, l).replace(/<[^>]+>/g, '') + (o ? ' · ' + o : ''); }
-  else document.title = pick(TITLE0, l);
-  if (l === 'ru') preloadCyrillic();
-  if (save) { try { localStorage.setItem('wl-lang', l); } catch (e) {} }
+  if (sw) { sw.classList.toggle('is-on', alt); sw.setAttribute('aria-checked', alt ? 'true' : 'false'); }
+  document.querySelectorAll('.lsw-lbl').forEach(b => b.classList.toggle('on', (b.dataset.lang === 'alt') === alt));
+  const k = alt ? 'alt' : 'en';
+  if (DATA) { const o = pick(DATA.site.owner, k); document.title = pick(DATA.site.title, k).replace(/<[^>]+>/g, '') + (o ? ' · ' + o : ''); }
+  else document.title = pick(TITLE0, k);
+  if (alt) preloadFonts(L2);
+  if (save) { try { localStorage.setItem('wl-lang', alt ? 'alt' : 'en'); } catch (e) {} }
   renderGate();
 }
-function preloadCyrillic() {
-  if (preloadCyrillic.done) return; preloadCyrillic.done = true;
-  for (const f of ['lora-cyrillic', 'lora-italic-cyrillic']) {
+/* the second language's font subset (Cyrillic or Latin-extended); other scripts use the phone's own font */
+function preloadFonts(code) {
+  const script = window.Langs ? Langs.info(code).script : 'cyrillic';
+  const files = script === 'cyrillic' ? ['lora-cyrillic', 'lora-italic-cyrillic'] : script === 'latin-ext' ? ['lora-latin-ext', 'lora-italic-latin-ext'] : [];
+  for (const f of files) {
+    if (preloadFonts[f]) continue; preloadFonts[f] = true;
     const l = document.createElement('link');
     l.rel = 'preload'; l.as = 'font'; l.type = 'font/woff2'; l.crossOrigin = 'anonymous'; l.href = `assets/fonts/${f}.woff2`;
     document.head.appendChild(l);
   }
 }
+/* the list says which second language it has: the switch's label, the spans' lang, the first choice for a new visitor */
+function setL2(code) {
+  L2 = /^[a-z]{2,3}$/.test(code || '') && code !== 'en' ? code : 'ru';
+  const info = window.Langs ? Langs.info(L2) : { label: L2.toUpperCase(), name: L2, script: 'cyrillic' };
+  app.classList.toggle('plainhand', info.script !== 'cyrillic' && info.script !== 'latin');   // the handwriting font has no glyphs for these
+  const lbl = $('.lsw-lbl[data-lang="alt"]'); if (lbl) lbl.textContent = info.label;
+  const sw = $('#langToggle'); if (sw) sw.setAttribute('aria-label', `${info.name} / English`);
+  let stored = null; try { stored = localStorage.getItem('wl-lang'); } catch (e) {}
+  if (!stored) setLang((navigator.language || '').toLowerCase().startsWith(L2) ? 'alt' : 'en', false);
+  else setLang(stored === 'en' ? 'en' : 'alt', false);
+}
 let lang = 'en';
-try { lang = localStorage.getItem('wl-lang') || ((navigator.language || '').toLowerCase().startsWith('ru') ? 'ru' : 'en'); } catch (e) {}
+try { const st = localStorage.getItem('wl-lang'); lang = st ? (st === 'en' ? 'en' : 'alt') : ((navigator.language || '').toLowerCase().startsWith('ru') ? 'alt' : 'en'); } catch (e) {}
 setLang(lang, false);
-const switchLang = () => { const l = L() === 'ru' ? 'en' : 'ru'; setLang(l, true); snd(l === 'ru' ? 'toggle.on' : 'toggle.off', 'signature'); };
+const switchLang = () => { const l = L() === 'en' ? 'alt' : 'en'; setLang(l, true); snd(l !== 'en' ? 'toggle.on' : 'toggle.off', 'signature'); };
 $('#langToggle') && $('#langToggle').addEventListener('click', switchLang);
-document.querySelectorAll('.lsw-lbl').forEach(b => b.addEventListener('click', () => { if (b.dataset.lang !== L()) switchLang(); }));
+document.querySelectorAll('.lsw-lbl').forEach(b => b.addEventListener('click', () => { if ((b.dataset.lang === 'alt') !== (L() !== 'en')) switchLang(); }));
 
 /* ---------- title letters: one span per letter, grouped per word (.w, nowrap) so a line only breaks between words ---------- */
 function renderTitle(title) {
   const h = $('#title');
   const key = JSON.stringify(title); if (key === renderTitle.key) return;   // same title: don't replay the letters
   renderTitle.key = key;
-  const mk = (txt, cls) => {
+  /* whole = one animated piece per word, for scripts that must not be cut into letters (joined Arabic, Hindi matras, CJK) */
+  const mk = (txt, cls, whole) => {
     let i = 0, out = '', w = '';
     const end = () => { if (w) out += `<span class="w">${w}</span>`; w = ''; };
     for (const part of String(txt).split(/(<i>.*?<\/i>)/)) {
       if (!part) continue;
       const ital = part.startsWith('<i>');
       const chars = part.replace(/<\/?i>/g, '');
-      for (const ch of chars) {
+      const units = whole ? chars.split(/( )/) : [...chars];
+      for (const ch of units) {
+        if (!ch) continue;
         if (ch === ' ') { end(); out += ' '; i++; continue; }
         const c = `<span class="ch" style="--i:${i++}">${esc(ch)}</span>`;
         w += ital ? `<i>${c}</i>` : c;
       }
     }
     end();
-    return `<span class="${cls}">${out}</span>`;
+    return `<span class="${cls}"${cls === 'l-2' && RTL() ? ' dir="rtl"' : ''}>${out}</span>`;
   };
-  h.innerHTML = mk(title.en, 'l-en') + mk(title.ru, 'l-ru');
+  const whole2 = !!(window.Langs && (Langs.info(L2).script === 'other' || Langs.info(L2).rtl));
+  h.innerHTML = mk(title.en, 'l-en') + mk(title[L2] ?? title.en, 'l-2', whole2);
 }
 
 /* ---------- site strings (everything editable lives in data/items.json) ---------- */
@@ -156,8 +182,8 @@ function thumbHTML(it) {
 }
 /* got it: the back drops price, availability and shops — just the stamp and a handwritten thank-you (text editable in admin → Texts) */
 /* a longer note is written smaller, so the stamp and the signature stay on the card (past 13 px the note's end clips) */
-const HAND_FIT = { en: 92, ru: 82 };   // characters that fit at 21 px on the smallest card (232 px), with a margin
-const hand = (note, l) => Math.floor(clamp(21 * Math.sqrt(HAND_FIT[l] / Math.max(1, pick(note, l).length)), 13, 21) * 2) / 2;
+const HAND_FIT = () => ({ en: 92, alt: (window.Langs && Langs.info(L2).script === 'other') ? 45 : 82 });   // characters that fit at 21 px on the smallest card (232 px); CJK glyphs are twice as wide
+const hand = (note, l) => Math.floor(clamp(21 * Math.sqrt(HAND_FIT()[l] / Math.max(1, String(pick(note, l)).length)), 13, 21) * 2) / 2;
 function gotBackHTML(it, ui) {
   const note = ui.gotNote || { en: 'Thank you!', ru: 'Спасибо!' };
   return `<div class="face back got-back" inert>
@@ -165,7 +191,7 @@ function gotBackHTML(it, ui) {
             <div class="gb-name">${t(it.name)}</div>
             <div class="gb-mid">
               <span class="stamp">${t(ui.got)} <span aria-hidden="true">✓</span></span>
-              <p class="thanks" style="--hen:${hand(note, 'en')}px;--hru:${hand(note, 'ru')}px">${t(note)}</p>
+              <p class="thanks" style="--hen:${hand(note, 'en')}px;--h2:${hand(note, 'alt')}px">${t(note)}</p>
               ${ui.gotSign ? `<p class="sign">${t(ui.gotSign)}</p>` : ''}
             </div>
             <div class="bfoot"><span></span><button type="button" class="hint"><span class="sr">${t(ui.back)}</span><span aria-hidden="true">↻</span></button></div>
@@ -173,9 +199,10 @@ function gotBackHTML(it, ui) {
 }
 function cardHTML(it, tier, idx, ri, eager) {
   const ui = DATA.ui;
-  const av = ['eu', 'tr', 'ru'].map(k => {
-    let v = it.avail && it.avail[k]; if (!MARK[v]) v = 'n';
-    return `<span class="${v}"><b>${MARK[v]}</b><small>${t(ui[k])}</small></span>`;
+  const markets = MARKETS(), cols = markets.length <= 3 ? markets.length : markets.length === 4 ? 2 : 3;
+  const av = markets.map(code => {
+    let v = availOf(it, code); if (!MARK[v]) v = 'n';
+    return `<span class="${v}"><b>${MARK[v]}</b><small>${t(regionLabel(code))}</small></span>`;
   }).join('');
   const where = (it.where || []).map(w => {
     const label = t(w.t), u = safeUrl(w.u);
@@ -208,7 +235,7 @@ function cardHTML(it, tier, idx, ri, eager) {
             ${FX}
             <div class="hd">${thumbHTML(it)}<div><div class="lbl">${t(ui.approx)}</div><div class="note">${t(it.note || '')}</div></div></div>
             <div class="big">${t(it.price)}</div>
-            <div class="avail">${av}</div>
+            <div class="avail${markets.length > 3 ? ' two' : ''}" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${av}</div>
             <div class="where"><div class="lbl">${t(ui.where)}</div><ul>${where}</ul></div>
             <div class="bfoot"><div class="bk">${bookPart(it)}</div><button type="button" class="hint"><span class="sr">${t(ui.back)}</span><span aria-hidden="true">↻</span></button></div>
           </div>`}
@@ -671,6 +698,7 @@ function apply(d, quiet) {
   if (keepApi && !DATA.site.api) DATA.site.api = keepApi;
   LIST = (DATA.site && DATA.site.slug) || 'dmitri';
   API = String((LOCAL && new URLSearchParams(location.search).get('api')) || DATA.site.api || '').replace(/\/+$/, '');
+  setL2(String(DATA.site.lang2 || 'ru').toLowerCase());
   renderSite(DATA.site);
   renderBg();
   renderNav(DATA.tiers);
@@ -706,7 +734,7 @@ async function load() {
     d = await r.json();
     if (!okShape(d)) throw new Error('bad data shape');
   } catch (err) {
-    main.innerHTML = `<p class="msg"><span class="l-en">Couldn't load the list. Open the link again when you're online.</span><span class="l-ru">Не получилось загрузить список. Открой ссылку ещё раз, когда появится сеть.</span></p>`;
+    main.innerHTML = `<p class="msg"><span class="l-en">Couldn't load the list. Open the link again when you're online.</span><span class="l-2" lang="ru">Не получилось загрузить список. Открой ссылку ещё раз, когда появится сеть.</span></p>`;
     console.error(err);
     return;
   }

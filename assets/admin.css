@@ -50,11 +50,12 @@ code { font: 13px ui-monospace, "SF Mono", Menlo, monospace; background: var(--c
 input[type="text"], input[type="url"], input[type="password"], textarea { font: 16px/1.3 var(--sans); color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; min-height: 46px; width: 100%; }
 textarea { resize: vertical; }
 input:focus, textarea:focus { outline: 2px solid #8fb08a; outline-offset: 1px; }
-input[lang="ru"], textarea[lang="ru"] { background: #fffaf0; }
+input[data-l2-input], textarea[data-l2-input] { background: #fffaf0; }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 @media (max-width: 420px) { .pair { grid-template-columns: 1fr; gap: 0; } }
-.seg { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--cream-2); border-radius: 12px; padding: 3px; margin: 8px 0 14px; }
-.seg button { appearance: none; border: 0; background: transparent; color: var(--muted); font: 600 14px/1 var(--sans); min-height: 40px; border-radius: 10px; cursor: pointer; }
+.seg { display: grid; grid-template-columns: repeat(5, 1fr); background: var(--cream-2); border-radius: 12px; padding: 3px; margin: 8px 0 14px; }
+.seg button { appearance: none; border: 0; background: transparent; color: var(--muted); font: 600 14px/1 var(--sans); min-height: 40px; border-radius: 10px; cursor: pointer; padding: 0 2px; }
+@media (max-width: 400px) { .seg button { font-size: 12.5px; } }
 .seg button[aria-selected="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 2px rgba(20,20,22,.08); }
 .seg b { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; margin-left: 4px; border-radius: 10px; background: var(--ink); color: var(--cream); font-size: 11px; }
 .segsm { display: inline-flex; background: var(--cream-2); border-radius: 10px; padding: 3px; gap: 2px; }
@@ -202,6 +203,20 @@ input[type="range"] { width: 100%; accent-color: var(--ink); min-height: 32px; }
 .optrow .segsm { width: 100%; }
 .optrow .segsm button { flex: 1 1 auto; }
 
+/* setup: language, currency, countries */
+select { font: 16px/1.3 var(--sans); color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; min-height: 46px; width: 100%; appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 18px) 20px, calc(100% - 13px) 20px; background-size: 5px 5px; background-repeat: no-repeat; }
+html.dark select { background-color: #1b1712; border-color: #5a5044; }
+.addrow { display: flex; gap: 8px; align-items: center; }
+.addrow .btn { flex: none; }
+.mrow { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 4px 0 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); margin-bottom: 6px; font-size: 15px; }
+.mrow span { flex: 1 1 auto; }
+.mrow .btn { min-width: 44px; padding: 0; }
+.withbtn { display: flex; gap: 6px; }
+.withbtn input { flex: 1 1 auto; min-width: 0; }
+.withbtn .btn { flex: none; min-width: 46px; font-size: 18px; }
+b[data-l2] { font-weight: 600; }
+b[data-l2-cur] { font-weight: 500; color: var(--muted); }
+
 /* small words editor (Texts tab) */
 .words { margin: 4px 0 16px; border-top: 1px solid var(--line); padding-top: 6px; }
 .words summary { cursor: pointer; font-weight: 600; font-size: 14px; min-height: 44px; display: flex; align-items: center; gap: 8px; list-style: none; }
@@ -238,7 +253,7 @@ html.dark {
   --green: #7fd09a; --red: #f08a80; --amber: #e2b84d;
 }
 html.dark input[type="text"], html.dark input[type="url"], html.dark input[type="password"], html.dark textarea { background: #1b1712; border-color: #5a5044; }
-html.dark input[lang="ru"], html.dark textarea[lang="ru"] { background: #1f1a12; }
+html.dark input[data-l2-input], html.dark textarea[data-l2-input] { background: #1f1a12; }
 html.dark .link { color: #d9b26a; }
 html.dark .pill.got { background: #243b2a; color: #9ad1a7; }
 html.dark .pill.dropped { background: #3a2420; color: #e39a92; }

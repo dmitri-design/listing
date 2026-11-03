@@ -30,6 +30,12 @@
       "ru": "Вишлист Димы на 2026 — 22 вещи на верёвке, от кофейных весов до Теслы. Нажми на карточку: цена и где искать."
     },
     "slug": "dmitri",
+    "lang2": "ru",
+    "markets": [
+      "EU",
+      "TR",
+      "RU"
+    ],
     "api": "https://wishlist-api.dmitri-design.workers.dev"
   },
   "tiers": [

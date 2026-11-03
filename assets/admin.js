@@ -6,9 +6,11 @@
   const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const enOf = (v) => (v && typeof v === 'object' ? v.en : v) ?? '';
-  const ruOf = (v) => (v && typeof v === 'object' ? v.ru : '') ?? '';
+  let L2 = 'ru';   // the list's second language (site.lang2); English is always the first
+  const l2Of = (v) => (v && typeof v === 'object' ? v[L2] : '') ?? '';
+  const PACKS = ['ru', 'tr', 'uk', 'de', 'fr', 'es', 'it', 'pt', 'pl', 'nl', 'hi', 'zh', 'ja'];   // the page's own words come ready for these
   /* EN + optional RU input → a plain string unless RU differs; an untouched value keeps its exact shape */
-  const bi = (en, ru, old) => old && typeof old === 'object' && old.en === en && (old.ru ?? '') === ru ? old : ru && ru !== en ? { en, ru } : en;
+  const bi = (en, alt, old) => old && typeof old === 'object' && old.en === en && (old[L2] ?? '') === alt ? old : alt && alt !== en ? { en, [L2]: alt } : en;
   const LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
   const snd = (role, voice) => { if (window.Sound) window.Sound.play(role, voice || 'signature'); };
@@ -69,6 +71,9 @@
       return false;
     }
     const prev = DOC; DOC = doc;   // DOC.updated = the Worker's version; every PUT sends it back
+    L2 = String(doc.site.lang2 || 'ru').toLowerCase();
+    doc.items.forEach(i => { if (i && i.avail) i.avail = Object.fromEntries(Object.entries(i.avail).map(([k, v]) => [String(k).toUpperCase(), v])); });   // market keys are ISO codes
+    applyL2();
     show('app'); renderAll(prev); loadBookings(); return true;
   }
   $('#loginForm').addEventListener('submit', async (e) => {
@@ -126,7 +131,15 @@
     $('#fab').hidden = b.dataset.view !== 'items';
     snd('toggle.on');
   }));
-  function renderAll(prev) { renderItems(); renderTexts(prev); renderLook(); }
+  function renderAll(prev) { renderItems(); renderTexts(prev); renderLook(); renderSetup(); }
+  /* every "· RU" in the admin follows the list's second language */
+  const markets = () => { const m = Array.isArray(DOC.site.markets) && DOC.site.markets.length ? DOC.site.markets : ['EU', 'TR', 'RU']; return m.map(c => String(c).toUpperCase()).filter(c => /^[A-Z]{2}$/.test(c)).slice(0, 6); };
+  function applyL2() {
+    const info = window.Langs ? Langs.info(L2) : { label: L2.toUpperCase() };
+    $$('[data-l2]').forEach(el => { el.textContent = info.label; });
+    $$('[data-l2-input]').forEach(el => { el.setAttribute('lang', L2); if (window.Langs && Langs.info(L2).rtl) el.dir = 'rtl'; else el.removeAttribute('dir'); });
+    $$('[data-l2-cur]').forEach(el => { el.textContent = DOC.site.currency ? `(${DOC.site.currency})` : ''; });
+  }
   const tierOf = (id) => DOC.tiers.find(t => t.id === id) || DOC.tiers[0];
   const sorted = () => DOC.items.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
   function thumb(it) {
@@ -251,7 +264,7 @@
   function openTier(id) {
     if (saving) { toast('Still saving…'); return; }
     tierCur = DOC.tiers.find(t => t.id === id); if (!tierCur) return;
-    for (const k of ['name', 'short', 'range', 'blurb']) for (const l of ['en', 'ru']) tf.elements[`${k}.${l}`].value = (tierCur[k] && tierCur[k][l]) || '';
+    for (const k of ['name', 'short', 'range', 'blurb']) { tf.elements[`${k}.en`].value = (tierCur[k] && tierCur[k].en) || ''; tf.elements[`${k}.l2`].value = (tierCur[k] && tierCur[k][L2]) || ''; }
     tf.elements.min.value = tierCur.min ?? ''; tf.elements.max.value = tierCur.max ?? '';
     $('#tierTitle').textContent = tierCur.name.en; $('#tierErr').hidden = true;
     tierBase = tierSnap(); tierEd.showModal(); $('.sheet-body', tierEd).scrollTop = 0;
@@ -260,7 +273,7 @@
     e.preventDefault(); if (!tierCur) return;
     if (!tf.elements['name.en'].value.trim()) { const er = $('#tierErr'); er.textContent = 'Give the tier a name (EN).'; er.hidden = false; return; }
     const doc = JSON.parse(JSON.stringify(DOC)), t = doc.tiers.find(x => x.id === tierCur.id);
-    for (const k of ['name', 'short', 'range', 'blurb']) { const en = tf.elements[`${k}.en`].value.trim(), ru = tf.elements[`${k}.ru`].value.trim(); if (en || ru || t[k]) t[k] = { en, ru: ru || en }; }
+    for (const k of ['name', 'short', 'range', 'blurb']) { const en = tf.elements[`${k}.en`].value.trim(), alt = tf.elements[`${k}.l2`].value.trim(); if (en || alt || t[k]) t[k] = Object.assign({}, t[k] && typeof t[k] === 'object' ? t[k] : {}, { en, [L2]: alt || en }); }
     const mn = num(tf.elements.min.value), mx = num(tf.elements.max.value);
     if (mn != null) t.min = mn; else delete t.min; if (mx != null) t.max = mx; else delete t.max;
     if (await save(doc, 'Tier saved')) { tierEd.close(); renderItems(); }
@@ -301,31 +314,34 @@
   });
 
   /* ---------- texts ---------- */
-  const TEXT_FIELDS = ['title', 'brand', 'tagline', 'footer'];
+  const TEXT_FIELDS = ['title', 'brand', 'tagline', 'legend', 'footer'];
   const UI_FIELDS = ['gotNote', 'gotSign'];   // the handwritten thank-you on "got it" cards
   /* prev = the list on screen before a Reload: a field the owner has typed into since keeps the typed text */
   /* the small words: every ui.* string gets a plain-language label here; an unknown key shows as itself */
-  const WORD_LABELS = { approx: 'Back: "approx. price"', where: 'Back: "Where to look"', back: 'Flip-back button (hidden label)', tap: 'Front: "tap to flip"', things: 'Tier count unit', swipe: '"swipe →" under a row', sketch: 'Sketch placeholder', eu: 'Europe', tr: 'Turkey', ru: 'Russia', got: '"got it" stamp', booked: '"booked" ribbon', loading: 'Loading line', offline: 'Offline message', tilt: 'Tilt hint on the back', tiltAsk: 'Tilt permission toast', tiltOn: 'Tilt toast button', bookBtn: 'Booking button', bookTitle: 'Booking sheet title', bookName: 'Name field label', bookHelp: 'Name field help', bookConfirm: '"Book it" button', cancel: 'Cancel', bookedByYou: '"Booked by you"', unbook: 'Undo button', unbookSure: 'Undo: confirm label', unbooking: 'Undo in progress', taken: 'Error: just taken', gone: 'Error: crossed off', slowDown: 'Error: too many bookings', bookFail: 'Error: no connection', retry: '"Try again"', soundOn: 'Sound pill: on', soundOff: 'Sound pill: off', booking: '"Booking…"', bookedDone: 'Booked: confirmation', bookedTaken: 'Booked by someone else' };
+  const WORD_LABELS = { approx: 'Back: "approx. price"', where: 'Back: "Where to look"', back: 'Flip-back button (hidden label)', tap: 'Front: "tap to flip"', things: 'Tier count unit', swipe: '"swipe →" under a row', sketch: 'Sketch placeholder', got: '"got it" stamp', booked: '"booked" ribbon', loading: 'Loading line', offline: 'Offline message', tilt: 'Tilt hint on the back', tiltAsk: 'Tilt permission toast', tiltOn: 'Tilt toast button', bookBtn: 'Booking button', bookTitle: 'Booking sheet title', bookName: 'Name field label', bookHelp: 'Name field help', bookConfirm: '"Book it" button', cancel: 'Cancel', bookedByYou: '"Booked by you"', unbook: 'Undo button', unbookSure: 'Undo: confirm label', unbooking: 'Undo in progress', taken: 'Error: just taken', gone: 'Error: crossed off', slowDown: 'Error: too many bookings', bookFail: 'Error: no connection', retry: '"Try again"', soundOn: 'Sound pill: on', soundOff: 'Sound pill: off', booking: '"Booking…"', bookedDone: 'Booked: confirmation', bookedTaken: 'Booked by someone else' };
   function renderTexts(prev) {
     const f = $('#textsForm');
     const set = (el, was, now) => { if (el && (!prev || el.value.trim() === String(was || '').trim())) el.value = now || ''; };
-    for (const k of TEXT_FIELDS) for (const l of ['en', 'ru']) set(f.elements[`${k}.${l}`], prev && prev.site[k] && prev.site[k][l], DOC.site[k] && DOC.site[k][l]);
-    for (const k of UI_FIELDS) for (const l of ['en', 'ru']) set(f.elements[`ui.${k}.${l}`], prev && prev.ui[k] && prev.ui[k][l], DOC.ui[k] && DOC.ui[k][l]);
-    const keys = Object.keys(DOC.ui).filter(k => !UI_FIELDS.includes(k) && DOC.ui[k] && typeof DOC.ui[k] === 'object'), list = $('#wordsList');
+    const LK = { en: 'en', l2: L2 };
+    for (const k of TEXT_FIELDS) for (const l of ['en', 'l2']) set(f.elements[`${k}.${l}`], prev && prev.site[k] && prev.site[k][LK[l]], DOC.site[k] && DOC.site[k][LK[l]]);
+    for (const k of UI_FIELDS) for (const l of ['en', 'l2']) set(f.elements[`ui.${k}.${l}`], prev && prev.ui[k] && prev.ui[k][LK[l]], DOC.ui[k] && DOC.ui[k][LK[l]]);
+    const keys = Object.keys(DOC.ui).filter(k => !UI_FIELDS.includes(k) && !['eu', 'tr', 'ru'].includes(k) && DOC.ui[k] && typeof DOC.ui[k] === 'object'), list = $('#wordsList');
     $('#wordsCount').textContent = keys.length;
-    const fresh = !prev || !list.children.length;
-    if (fresh) list.innerHTML = keys.map(k => { const lb = esc(WORD_LABELS[k] || k); return `<div class="wordrow"><span>${lb}</span><input name="ui.${esc(k)}.en" type="text" aria-label="${lb} · EN"><input name="ui.${esc(k)}.ru" type="text" lang="ru" aria-label="${lb} · RU"></div>`; }).join('');
-    for (const k of keys) for (const l of ['en', 'ru']) { const el = f.elements[`ui.${k}.${l}`]; if (fresh && el) el.value = DOC.ui[k][l] || ''; else set(el, prev && prev.ui[k] && prev.ui[k][l], DOC.ui[k][l]); }
+    const fresh = !prev || !list.children.length || String((prev.site && prev.site.lang2) || 'ru').toLowerCase() !== L2;   // a language change redraws everything
+    if (fresh) prev = null;
+    if (fresh) list.innerHTML = keys.map(k => { const lb = esc(WORD_LABELS[k] || k); return `<div class="wordrow"><span>${lb}</span><input name="ui.${esc(k)}.en" type="text" placeholder="EN" aria-label="${lb} · EN"><input name="ui.${esc(k)}.l2" type="text" lang="${esc(L2)}" data-l2-input placeholder="${esc(L2.toUpperCase())}" aria-label="${lb} · ${esc(L2.toUpperCase())}"></div>`; }).join('');
+    for (const k of keys) for (const l of ['en', 'l2']) { const el = f.elements[`ui.${k}.${l}`]; if (fresh && el) el.value = DOC.ui[k][LK[l]] || ''; else set(el, prev && prev.ui[k] && prev.ui[k][LK[l]], DOC.ui[k][LK[l]]); }
   }
   $('#textsForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const doc = JSON.parse(JSON.stringify(DOC)), f = e.target;
-    for (const k of TEXT_FIELDS) doc.site[k] = { en: f.elements[`${k}.en`].value.trim(), ru: f.elements[`${k}.ru`].value.trim() };
-    for (const k of UI_FIELDS) doc.ui[k] = { en: f.elements[`ui.${k}.en`].value.trim(), ru: f.elements[`ui.${k}.ru`].value.trim() };
-    for (const el of f.querySelectorAll('#wordsList input')) {   // small words: ui.<key>.<lang>; EN never goes empty, empty RU falls back to EN
-      const m = el.name.match(/^ui\.(.+)\.(en|ru)$/); if (!m || !doc.ui[m[1]] || typeof doc.ui[m[1]] !== 'object') continue;
+    const both = (k, en, alt) => Object.assign({}, (k && typeof k === 'object') ? k : {}, { en, [L2]: alt });   // other languages' words stay untouched
+    for (const k of TEXT_FIELDS) doc.site[k] = both(doc.site[k], f.elements[`${k}.en`].value.trim(), f.elements[`${k}.l2`].value.trim());
+    for (const k of UI_FIELDS) doc.ui[k] = both(doc.ui[k], f.elements[`ui.${k}.en`].value.trim(), f.elements[`ui.${k}.l2`].value.trim());
+    for (const el of f.querySelectorAll('#wordsList input')) {   // small words: ui.<key>.(en|l2); EN never goes empty, an empty second language falls back to EN
+      const m = el.name.match(/^ui\.(.+)\.(en|l2)$/); if (!m || !doc.ui[m[1]] || typeof doc.ui[m[1]] !== 'object') continue;
       const v = el.value.trim(); if (m[2] === 'en' && !v) continue;
-      doc.ui[m[1]][m[2]] = v || doc.ui[m[1]].en;
+      doc.ui[m[1]][m[2] === 'en' ? 'en' : L2] = v || doc.ui[m[1]].en;
     }
     if (await save(doc, 'Texts saved')) renderTexts(doc);   // saved fields show trimmed; typing since the tap stays
   });
@@ -468,23 +484,76 @@
 
   /* ---------- editor ---------- */
   const ed = $('#editor'), form = $('#editForm');
+  /* availability: one row per market the list has (Setup); flags + the browser's own country names */
+  function renderAvail() {
+    $('#availRows').innerHTML = markets().map(c => `<div class="avrow"><span>${window.Langs ? Langs.flag(c) + ' ' + esc(Langs.regionName(c, 'en')) : esc(c)}</span><div class="segsm" data-av="${c}"><button type="button" data-v="y">✓</button><button type="button" data-v="g">~</button><button type="button" data-v="n">✗</button></div></div>`).join('');
+  }
+  /* ≈: the second price from the USD one, at the rate set in Setup, written the way that language writes money */
+  $('#priceConv').addEventListener('click', () => {
+    const usd = priceUSD(form.elements['price.en'].value), rate = +DOC.site.rate, cur = DOC.site.currency;
+    if (usd == null || !(rate > 0) || !cur) { toast('Type a USD price first', true); return; }
+    form.elements['price.l2'].value = '≈ ' + (window.Langs ? Langs.money(usd * rate, cur, L2) : Math.round(usd * rate) + ' ' + cur);
+    snd('toggle.on');
+  });
+
+  /* ---------- setup: second language, second currency, countries ---------- */
+  let SETUP_MARKETS = null;
+  function renderSetup() {
+    if (!window.Langs) return;
+    const f = $('#setupForm');
+    $('#lang2Sel').innerHTML = Object.entries(Langs.LANGS).map(([c, l]) => `<option value="${c}">${esc(l.name)} · ${esc(l.label)}${PACKS.includes(c) ? ' ✓' : ''}</option>`).join('');
+    $('#lang2Sel').value = Langs.LANGS[L2] ? L2 : 'ru';
+    $('#curSel').innerHTML = '<option value="">— none —</option>' + Langs.CURRENCIES.map(c => `<option value="${c}">${c}</option>`).join('');
+    $('#curSel').value = DOC.site.currency || '';
+    f.elements.rate.value = DOC.site.rate || '';
+    SETUP_MARKETS = markets();
+    renderMarkets();
+  }
+  function renderMarkets() {
+    $('#marketRows').innerHTML = SETUP_MARKETS.map(c => `<div class="mrow"><span>${Langs.flag(c)} ${esc(Langs.regionName(c, 'en'))}</span><button type="button" class="btn ghost sm" data-mx="${c}" aria-label="Remove ${esc(Langs.regionName(c, 'en'))}">✕</button></div>`).join('');
+    const left = Langs.COUNTRIES.filter(c => !SETUP_MARKETS.includes(c));
+    $('#marketAdd').innerHTML = left.map(c => `<option value="${c}">${Langs.flag(c)} ${esc(Langs.regionName(c, 'en'))}</option>`).join('');
+    $('#marketAddBtn').disabled = SETUP_MARKETS.length >= 6 || !left.length;
+  }
+  $('#marketRows').addEventListener('click', (e) => { const b = e.target.closest('[data-mx]'); if (!b) return; SETUP_MARKETS = SETUP_MARKETS.filter(c => c !== b.dataset.mx); renderMarkets(); snd('toggle.off'); });
+  $('#marketAddBtn').addEventListener('click', () => { const c = $('#marketAdd').value; if (!c || SETUP_MARKETS.includes(c) || SETUP_MARKETS.length >= 6) return; SETUP_MARKETS.push(c); renderMarkets(); snd('toggle.on'); });
+  $('#setupForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target, doc = JSON.parse(JSON.stringify(DOC));
+    const lang2 = String(f.elements.lang2.value || 'ru').toLowerCase(), cur = f.elements.currency.value, rate = parseFloat(String(f.elements.rate.value).replace(',', '.'));
+    doc.site.lang2 = lang2;
+    if (cur) doc.site.currency = cur; else delete doc.site.currency;
+    if (rate > 0) doc.site.rate = rate; else delete doc.site.rate;
+    doc.site.markets = SETUP_MARKETS.slice(0, 6);
+    const rs = String(f.elements.rate.value).trim();
+    if (rs && !(rate > 0 && isFinite(rate))) { toast('Rate must be a number like 34.5', true); snd('state.error'); return; }
+    const missing = Object.values(doc.ui).some(v => v && typeof v === 'object' && !v[lang2]);
+    if (PACKS.includes(lang2) && lang2 !== 'ru' && missing) {   // bring the page's own words in that language (never overwriting what is there)
+      const pack = await fetch(`assets/lang/${lang2}.json`, { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).catch(() => null);
+      if (pack) for (const [k, v] of Object.entries(pack)) { if (!doc.ui[k]) continue; if (typeof doc.ui[k] !== 'object') doc.ui[k] = { en: doc.ui[k] }; if (!doc.ui[k][lang2]) doc.ui[k][lang2] = v; }
+      else toast(`Could not load the ${lang2.toUpperCase()} words; the page falls back to English`, true);
+    }
+    if (await save(doc, 'Setup saved')) { L2 = lang2; applyL2(); renderAll(); }
+  });
   let cur = null, isNew = false, pendingImage = null;   // pendingImage: { blob, type, w, h, url, alpha, src = Worker URL once uploaded }
   function openEditor(id) {
     if (saving) { toast('Still saving…'); return; }   // an editor opened now would show the list from before that save lands
     $('.sheet-body', ed).inert = false;
     isNew = !id;
-    cur = isNew ? { id: '', tier: DOC.tiers[0].id, name: { en: '', ru: '' }, desc: { en: '', ru: '' }, price: '', note: { en: '', ru: '' }, avail: { eu: 'y', tr: 'g', ru: 'g' }, where: [], status: 'wanted', kind: 'photo', image: null, illustration: null, order: 0 }
+    cur = isNew ? { id: '', tier: DOC.tiers[0].id, name: { en: '', [L2]: '' }, desc: { en: '', [L2]: '' }, price: '', note: { en: '', [L2]: '' }, avail: Object.fromEntries(markets().map(c => [c, c === 'EU' ? 'y' : 'g'])), where: [], status: 'wanted', kind: 'photo', image: null, illustration: null, order: 0 }
                 : JSON.parse(JSON.stringify(DOC.items.find(i => i.id === id)));
     pendingImage = null;
     $('#edTitle').textContent = isNew ? 'New item' : 'Edit item';
     const v = (k, val) => { form.elements[k].value = val ?? ''; };
-    v('name.en', cur.name.en); v('name.ru', cur.name.ru); v('desc.en', cur.desc.en); v('desc.ru', cur.desc.ru);
-    v('price.en', enOf(cur.price)); v('price.ru', ruOf(cur.price)); v('id', cur.id);
-    v('note.en', cur.note && cur.note.en); v('note.ru', cur.note && cur.note.ru);
+    v('name.en', cur.name.en); v('name.l2', cur.name[L2]); v('desc.en', cur.desc.en); v('desc.l2', cur.desc[L2]);
+    v('price.en', enOf(cur.price)); v('price.l2', l2Of(cur.price)); v('id', cur.id);
+    v('note.en', cur.note && cur.note.en); v('note.l2', cur.note && cur.note[L2]);
+    $('#priceConv').hidden = !(DOC.site.currency && +DOC.site.rate > 0);
+    renderAvail();
     form.elements.id.readOnly = !isNew;
     $('#tierSeg').innerHTML = DOC.tiers.map(t => `<button type="button" data-v="${esc(t.id)}">${esc(t.short ? t.short.en : t.name.en)}</button>`).join('');
     seg('#tierSeg', cur.tier); seg('#statusSeg', cur.status || 'wanted'); seg('#kindSeg', cur.kind || 'photo');
-    for (const k of ['eu', 'tr', 'ru']) seg(`[data-av="${k}"]`, (cur.avail && cur.avail[k]) || 'n');
+    for (const k of markets()) seg(`[data-av="${k}"]`, (cur.avail && (cur.avail[k] ?? cur.avail[k.toLowerCase()])) || 'n');
     renderWhere(); renderPhoto();
     $('#deleteFld').hidden = isNew;
     const err = $('#edErr'); err.hidden = true;
@@ -495,7 +564,7 @@
   let edBase = '';
   const edSnap = () => JSON.stringify({
     f: [...form.elements].filter(el => el.name).map(el => el.value),
-    s: ['#tierSeg', '#statusSeg', '#kindSeg', '[data-av="eu"]', '[data-av="tr"]', '[data-av="ru"]'].map(segVal),
+    s: ['#tierSeg', '#statusSeg', '#kindSeg', ...markets().map(c => `[data-av="${c}"]`)].map(segVal),
     w: $$('#whereRows input').map(i => i.value),
     img: pendingImage ? pendingImage.url : (cur && cur.image) || '',
   });
@@ -508,7 +577,7 @@
     snd('toggle.on');
   });
   function renderWhere() {
-    $('#whereRows').innerHTML = (cur.where || []).map((w, i) => `<div class="wrow"><input type="text" placeholder="shop" aria-label="Shop · EN" value="${esc(enOf(w.t))}" data-wl="${i}"><input type="text" lang="ru" placeholder="· RU, if different" aria-label="Shop · RU" value="${esc(ruOf(w.t))}" data-wr="${i}"><input type="url" inputmode="url" placeholder="https://…" aria-label="Link" value="${esc(w.u || '')}" data-wu="${i}" autocapitalize="none"><button type="button" class="btn ghost sm" data-wx="${i}" aria-label="Remove link">✕</button></div>`).join('');
+    $('#whereRows').innerHTML = (cur.where || []).map((w, i) => `<div class="wrow"><input type="text" placeholder="shop" aria-label="Shop · EN" value="${esc(enOf(w.t))}" data-wl="${i}"><input type="text" lang="${esc(L2)}" data-l2-input placeholder="· ${esc(L2.toUpperCase())}, if different" aria-label="Shop · ${esc(L2.toUpperCase())}" value="${esc(l2Of(w.t))}" data-wr="${i}"><input type="url" inputmode="url" placeholder="https://…" aria-label="Link" value="${esc(w.u || '')}" data-wu="${i}" autocapitalize="none"><button type="button" class="btn ghost sm" data-wx="${i}" aria-label="Remove link">✕</button></div>`).join('');
   }
   /* rows → [{ t, u? }]; a pasted link without a shop name keeps its row, labelled by its site */
   function readWhere() {
@@ -580,7 +649,7 @@
     const pi = pendingImage, nu = isNew, session = cur;   // this editor session: Cancel + another item during the upload must not leak into it
     const err = $('#edErr'); err.hidden = true;
     const fail = (msg) => { err.textContent = msg; err.hidden = false; toast(msg, true); snd('state.error'); };
-    const name = { en: form.elements['name.en'].value.trim(), ru: form.elements['name.ru'].value.trim() };
+    const name = { en: form.elements['name.en'].value.trim(), [L2]: form.elements['name.l2'].value.trim() };
     if (!name.en) { fail('Give it a name (EN).'); return; }
     /* the price belongs to another tier? offer it once, one tap (the bands come from the tier editor or the tiers' price lines) */
     const tierId = segVal('#tierSeg') || DOC.tiers[0].id, p = priceUSD(form.elements['price.en'].value), band = tierBand(tierOf(tierId));
@@ -599,20 +668,22 @@
     const doc = JSON.parse(JSON.stringify(DOC));
     let id = cur.id;
     if (nu) {   // always a valid id for the Worker: typed id, else the name, else item-<time>
-      const base = slug(form.elements.id.value) || slug(name.en) || slug(name.ru) || 'item-' + Date.now().toString(36);
+      const base = slug(form.elements.id.value) || slug(name.en) || slug(name[L2]) || 'item-' + Date.now().toString(36);
       id = base; for (let n = 2; doc.items.some(i => i.id === id); n++) id = `${base}-${n}`;
     }
     const it = nu ? { id } : doc.items.find(i => i.id === id);
-    it.name = name; it.name.ru = it.name.ru || it.name.en;
-    it.desc = { en: form.elements['desc.en'].value.trim(), ru: form.elements['desc.ru'].value.trim() || form.elements['desc.en'].value.trim() };
-    const pe = form.elements['price.en'].value.trim(), pr = form.elements['price.ru'].value.trim();
-    it.price = bi(pe || pr, pr, cur.price);
-    const ne = form.elements['note.en'].value.trim(), nr = form.elements['note.ru'].value.trim();
-    it.note = { en: ne, ru: nr || ne };
+    const keep = (o) => (o && typeof o === 'object') ? o : {};   // words in other languages (an earlier second language) stay
+    it.name = Object.assign(keep(it.name), name, { [L2]: name[L2] || name.en });
+    const de = form.elements['desc.en'].value.trim(), d2 = form.elements['desc.l2'].value.trim();
+    it.desc = Object.assign(keep(it.desc), { en: de, [L2]: d2 || de });
+    const pe = form.elements['price.en'].value.trim(), pr = form.elements['price.l2'].value.trim();
+    it.price = Object.assign(keep(cur.price), { en: pe || pr, [L2]: pr || pe || pr });   // prices in other languages stay
+    const ne = form.elements['note.en'].value.trim(), nr = form.elements['note.l2'].value.trim();
+    it.note = Object.assign(keep(it.note), { en: ne, [L2]: nr || ne });
     it.tier = segVal('#tierSeg') || doc.tiers[0].id;
     it.status = segVal('#statusSeg') || 'wanted';
     it.kind = segVal('#kindSeg') || 'photo';
-    it.avail = { eu: segVal('[data-av="eu"]') || 'n', tr: segVal('[data-av="tr"]') || 'n', ru: segVal('[data-av="ru"]') || 'n' };
+    it.avail = Object.assign(keep(it.avail), Object.fromEntries(markets().map(c => [c, segVal(`[data-av="${c}"]`) || 'n'])));
     it.where = readWhere();
     if (pi) {
       if (!pi.src) {   // a fresh id per upload: the live photo stays as it is until the saved list points elsewhere

@@ -81,6 +81,11 @@ async function putDoc(req, env, list, cors) {
   if (raw.length > MAX_DOC) return out({ error: 'too_large' }, 413, cors);
   let doc; try { doc = JSON.parse(raw); } catch { return out({ error: 'bad_json' }, 400, cors); }
   if (!doc || typeof doc !== 'object' || !doc.site || !Array.isArray(doc.tiers) || !doc.ui || !Array.isArray(doc.items)) return out({ error: 'bad_shape' }, 400, cors);
+  const st = doc.site;   // the page trusts these: a second language code (never 'en'), ISO markets, a currency code, a rate
+  if (st.lang2 != null && !(/^[a-z]{2,3}$/.test(st.lang2) && st.lang2 !== 'en')) return out({ error: 'bad_lang2' }, 400, cors);
+  if (st.markets != null && !(Array.isArray(st.markets) && st.markets.length <= 6 && st.markets.every(c => /^[A-Z]{2}$/.test(c)))) return out({ error: 'bad_markets' }, 400, cors);
+  if (st.currency != null && !/^[A-Z]{3}$/.test(st.currency)) return out({ error: 'bad_currency' }, 400, cors);
+  if (st.rate != null && !(Number.isFinite(st.rate) && st.rate > 0)) return out({ error: 'bad_rate' }, 400, cors);
   const ids = new Set();
   for (const it of doc.items) {
     if (!it || typeof it.id !== 'string' || !ITEM.test(it.id) || ids.has(it.id)) return out({ error: 'bad_item_id', id: it && it.id }, 400, cors);

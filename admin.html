@@ -53,6 +53,7 @@
       <button type="button" role="tab" data-view="bookings" aria-selected="false">Bookings <b id="bkCount" hidden></b></button>
       <button type="button" role="tab" data-view="texts" aria-selected="false">Texts</button>
       <button type="button" role="tab" data-view="look" aria-selected="false">Look</button>
+      <button type="button" role="tab" data-view="setup" aria-selected="false">Setup</button>
     </nav>
 
     <section id="view-items" class="view" role="tabpanel"></section>
@@ -64,20 +65,36 @@
 
     <section id="view-texts" class="view" role="tabpanel" hidden>
       <form id="textsForm" class="form">
-        <div class="pair"><label class="fld"><span>Title · EN</span><input name="title.en" type="text"></label><label class="fld"><span>Title · RU</span><input name="title.ru" type="text" lang="ru"></label></div>
-        <div class="pair"><label class="fld"><span>Line above the title · EN</span><input name="brand.en" type="text"></label><label class="fld"><span>· RU</span><input name="brand.ru" type="text" lang="ru"></label></div>
+        <div class="pair"><label class="fld"><span>Title · EN</span><input name="title.en" type="text"></label><label class="fld"><span>Title · <b data-l2>RU</b></span><input name="title.l2" type="text" data-l2-input></label></div>
+        <div class="pair"><label class="fld"><span>Line above the title · EN</span><input name="brand.en" type="text"></label><label class="fld"><span>Line above the title · <b data-l2>RU</b></span><input name="brand.l2" type="text" data-l2-input></label></div>
         <label class="fld"><span>Tagline · EN</span><textarea name="tagline.en" rows="2"></textarea></label>
-        <label class="fld"><span>Tagline · RU</span><textarea name="tagline.ru" rows="2" lang="ru"></textarea></label>
+        <label class="fld"><span>Tagline · <b data-l2>RU</b></span><textarea name="tagline.l2" rows="2" data-l2-input></textarea></label>
+        <div class="pair"><label class="fld"><span>Legend line · EN</span><input name="legend.en" type="text"></label><label class="fld"><span>Legend line · <b data-l2>RU</b></span><input name="legend.l2" type="text" data-l2-input></label></div>
         <label class="fld"><span>Footer · EN</span><textarea name="footer.en" rows="2"></textarea></label>
-        <label class="fld"><span>Footer · RU</span><textarea name="footer.ru" rows="2" lang="ru"></textarea></label>
+        <label class="fld"><span>Footer · <b data-l2>RU</b></span><textarea name="footer.l2" rows="2" data-l2-input></textarea></label>
         <label class="fld"><span>Thank-you note on "got it" cards · EN</span><textarea name="ui.gotNote.en" rows="3"></textarea></label>
-        <label class="fld"><span>Thank-you note · RU</span><textarea name="ui.gotNote.ru" rows="3" lang="ru"></textarea></label>
-        <div class="pair"><label class="fld"><span>Signature · EN</span><input name="ui.gotSign.en" type="text"></label><label class="fld"><span>· RU</span><input name="ui.gotSign.ru" type="text" lang="ru"></label></div>
+        <label class="fld"><span>Thank-you note · <b data-l2>RU</b></span><textarea name="ui.gotNote.l2" rows="3" data-l2-input></textarea></label>
+        <div class="pair"><label class="fld"><span>Signature · EN</span><input name="ui.gotSign.en" type="text"></label><label class="fld"><span>Signature · <b data-l2>RU</b></span><input name="ui.gotSign.l2" type="text" data-l2-input></label></div>
         <details class="words" id="words"><summary>Small words on the page <b id="wordsCount"></b></summary>
           <p class="help">Buttons, labels and messages. Changes show after Save texts. Tier names: the pencil next to a tier in Items.</p>
           <div id="wordsList"></div>
         </details>
         <div class="actions"><button type="submit" class="btn primary">Save texts</button></div>
+      </form>
+    </section>
+
+    <section id="view-setup" class="view" role="tabpanel" hidden>
+      <form id="setupForm" class="form">
+        <label class="fld"><span>Second language</span><select name="lang2" id="lang2Sel"></select></label>
+        <p class="help">English is always the first language. ✓ = the page's own words (buttons, hints, errors) are already translated; you can tweak them in Texts → Small words. Names and descriptions are yours to write.</p>
+        <div class="pair"><label class="fld"><span>Currency for the second price</span><select name="currency" id="curSel"></select></label><label class="fld"><span>1 USD =</span><input name="rate" type="text" inputmode="decimal" placeholder="e.g. 34.5"></label></div>
+        <p class="help" id="rateHelp">With a rate, the item editor gets a ≈ button that fills the second price from the USD one. You can always type your own.</p>
+        <div class="fld"><span>Countries on the card back</span>
+          <div id="marketRows"></div>
+          <div class="addrow"><select id="marketAdd" aria-label="Country to add"></select><button type="button" class="btn ghost sm" id="marketAddBtn">＋ Add</button></div>
+          <p class="help">Up to six fit on a card. Country names come from the phone itself, in both languages.</p>
+        </div>
+        <div class="actions"><button type="submit" class="btn primary">Save setup</button></div>
       </form>
     </section>
 
@@ -135,18 +152,15 @@
           <div class="segsm" id="kindSeg"><button type="button" data-v="cut">Cut-out</button><button type="button" data-v="photo">Photo</button></div>
           <p class="help">Product centered, 800 px or more. A transparent PNG becomes a cut-out by itself; anything else shows as a framed photo. Want a cut-out from a normal photo? Ask Claude Code.</p>
         </div>
-        <div class="pair"><label class="fld"><span>Name · EN</span><input name="name.en" type="text" required></label><label class="fld"><span>Name · RU</span><input name="name.ru" type="text" lang="ru"></label></div>
+        <div class="pair"><label class="fld"><span>Name · EN</span><input name="name.en" type="text" required></label><label class="fld"><span>Name · <b data-l2>RU</b></span><input name="name.l2" type="text" data-l2-input></label></div>
         <label class="fld"><span>Description · EN</span><textarea name="desc.en" rows="2"></textarea></label>
-        <label class="fld"><span>Description · RU</span><textarea name="desc.ru" rows="2" lang="ru"></textarea></label>
+        <label class="fld"><span>Description · <b data-l2>RU</b></span><textarea name="desc.l2" rows="2" data-l2-input></textarea></label>
         <div class="fld"><span>Tier</span><div class="segsm" id="tierSeg"></div></div>
-        <div class="pair"><label class="fld"><span>Price (USD, approx.) · EN</span><input name="price.en" type="text" placeholder="~$55" inputmode="text"></label><label class="fld"><span>· RU</span><input name="price.ru" type="text" lang="ru" placeholder="same as EN"></label></div>
-        <div class="pair"><label class="fld"><span>Price note · EN</span><input name="note.en" type="text" placeholder="retail · resale ~$80"></label><label class="fld"><span>· RU</span><input name="note.ru" type="text" lang="ru"></label></div>
+        <div class="pair"><label class="fld"><span>Price (USD, approx.)</span><input name="price.en" type="text" placeholder="~$55" inputmode="text"></label><label class="fld"><span>Price · <b data-l2>RU</b> <b data-l2-cur></b></span><div class="withbtn"><input name="price.l2" type="text" data-l2-input placeholder="same as EN"><button type="button" class="btn ghost sm" id="priceConv" hidden title="From the USD price, at the rate in Setup">≈</button></div></label></div>
+        <div class="pair"><label class="fld"><span>Price note · EN</span><input name="note.en" type="text" placeholder="retail · resale ~$80"></label><label class="fld"><span>Price note · <b data-l2>RU</b></span><input name="note.l2" type="text" data-l2-input></label></div>
         <label class="fld"><span>Id (url slug)</span><input name="id" type="text" pattern="[a-z0-9][a-z0-9-]*" placeholder="auto" autocapitalize="none"></label>
         <div class="fld"><span>Availability</span>
-          <div class="avail-rows">
-            <div class="avrow"><span>🇪🇺 Europe</span><div class="segsm" data-av="eu"><button type="button" data-v="y">✓</button><button type="button" data-v="g">~</button><button type="button" data-v="n">✗</button></div></div>
-            <div class="avrow"><span>🇹🇷 Turkey</span><div class="segsm" data-av="tr"><button type="button" data-v="y">✓</button><button type="button" data-v="g">~</button><button type="button" data-v="n">✗</button></div></div>
-            <div class="avrow"><span>🇷🇺 Russia</span><div class="segsm" data-av="ru"><button type="button" data-v="y">✓</button><button type="button" data-v="g">~</button><button type="button" data-v="n">✗</button></div></div>
+          <div class="avail-rows" id="availRows"></div>
           </div>
           <p class="help">✓ sold officially · ~ import or resale · ✗ not there</p>
         </div>
@@ -162,11 +176,11 @@
     <form id="tierForm" class="sheet-in" method="dialog" novalidate>
       <div class="sheet-top"><button type="button" class="link" id="tierCancel">Cancel</button><h2 id="tierTitle">Edit tier</h2><button type="submit" class="link strong">Save</button></div>
       <div class="sheet-body">
-        <div class="pair"><label class="fld"><span>Name · EN</span><input name="name.en" type="text" required></label><label class="fld"><span>Name · RU</span><input name="name.ru" type="text" lang="ru"></label></div>
-        <div class="pair"><label class="fld"><span>Short name (on cards) · EN</span><input name="short.en" type="text"></label><label class="fld"><span>· RU</span><input name="short.ru" type="text" lang="ru"></label></div>
-        <div class="pair"><label class="fld"><span>Price line · EN</span><input name="range.en" type="text" placeholder="under $500"></label><label class="fld"><span>· RU</span><input name="range.ru" type="text" lang="ru"></label></div>
+        <div class="pair"><label class="fld"><span>Name · EN</span><input name="name.en" type="text" required></label><label class="fld"><span>Name · <b data-l2>RU</b></span><input name="name.l2" type="text" data-l2-input></label></div>
+        <div class="pair"><label class="fld"><span>Short name (on cards) · EN</span><input name="short.en" type="text"></label><label class="fld"><span>Short name · <b data-l2>RU</b></span><input name="short.l2" type="text" data-l2-input></label></div>
+        <div class="pair"><label class="fld"><span>Price line · EN</span><input name="range.en" type="text" placeholder="under $500"></label><label class="fld"><span>Price line · <b data-l2>RU</b></span><input name="range.l2" type="text" data-l2-input></label></div>
         <label class="fld"><span>One-liner · EN</span><textarea name="blurb.en" rows="2"></textarea></label>
-        <label class="fld"><span>One-liner · RU</span><textarea name="blurb.ru" rows="2" lang="ru"></textarea></label>
+        <label class="fld"><span>One-liner · <b data-l2>RU</b></span><textarea name="blurb.l2" rows="2" data-l2-input></textarea></label>
         <div class="pair"><label class="fld"><span>Band from (USD)</span><input name="min" type="text" inputmode="numeric" placeholder="auto"></label><label class="fld"><span>Band to (USD)</span><input name="max" type="text" inputmode="numeric" placeholder="auto"></label></div>
         <p class="help">The band powers the tier hint: a price outside it makes the item editor offer the right tier. Empty = read from the price line.</p>
         <p class="err" id="tierErr" role="alert" hidden></p>
@@ -182,6 +196,7 @@
 </div>
 <script src="assets/sounds.js" defer></script>
 <script src="assets/theme.js" defer></script>
+<script src="assets/langs.js" defer></script>
 <script src="assets/patterns.js" defer></script>
 <script src="assets/wall.js" defer></script>
 <script src="assets/admin.js" defer></script>
