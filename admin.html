@@ -82,14 +82,17 @@
     </section>
 
     <section id="view-look" class="view" role="tabpanel" hidden>
-      <p class="help">The wall behind the cards: one for the light room, one for the dark. Patterns take a colour and a strength. Guests see it right after Save look.</p>
+      <p class="help">The wall behind the cards: one for the light room, one for the dark. Tap a tile and the room around you changes at once; Save look makes it live for guests.</p>
       <h3 class="lookh"><span class="lookdot" style="--c:#f4efe4"></span>Light room</h3>
       <div class="tiles" id="tiles-light"></div>
       <div class="lookopts" id="lookopts-light" hidden>
         <div class="strength"><span class="fld-l">Strength</span>
-          <div class="strow"><small>Faint</small><input type="range" id="str-light" min="2" max="60" step="1" aria-label="Strength"><small>Bold</small><output id="out-light" for="str-light"></output></div>
+          <div class="strow"><small>Faint</small><input type="range" id="str-light" data-side="light" data-k="strength" min="2" max="60" step="1" aria-label="Strength"><small>Bold</small><output id="out-light" for="str-light"></output></div>
           <div class="wallprev" id="prev-light" aria-hidden="true"></div></div>
         <div class="swrow" id="swrow-light"><span>Colour</span><div class="swatches" id="sw-light"></div></div>
+        <div class="optrow" id="fit-light" hidden><span class="fld-l">Photo</span><div class="segsm"><button type="button" data-fit="cover" data-side="light">Fill the wall</button><button type="button" data-fit="repeat" data-side="light">Repeat as a tile</button></div></div>
+        <div class="strength" id="sizerow-light" hidden><span class="fld-l">Tile size</span>
+          <div class="strow"><small>Small</small><input type="range" id="size-light" data-side="light" data-k="size" min="80" max="640" step="5" aria-label="Tile size"><small>Big</small><output id="sizeout-light" for="size-light"></output></div></div>
         <button type="button" class="btn ghost sm" id="replace-light" data-replace="light" hidden>Replace photo…</button>
       </div>
       <input type="file" id="bgIn-light" accept="image/*" hidden>
@@ -97,9 +100,13 @@
       <div class="tiles" id="tiles-dark"></div>
       <div class="lookopts" id="lookopts-dark" hidden>
         <div class="strength"><span class="fld-l">Strength</span>
-          <div class="strow"><small>Faint</small><input type="range" id="str-dark" min="2" max="70" step="1" aria-label="Strength"><small>Bold</small><output id="out-dark" for="str-dark"></output></div>
+          <div class="strow"><small>Faint</small><input type="range" id="str-dark" data-side="dark" data-k="strength" min="2" max="70" step="1" aria-label="Strength"><small>Bold</small><output id="out-dark" for="str-dark"></output></div>
           <div class="wallprev" id="prev-dark" aria-hidden="true"></div></div>
         <div class="swrow" id="swrow-dark"><span>Colour</span><div class="swatches" id="sw-dark"></div></div>
+        <div class="optrow" id="fit-dark" hidden><span class="fld-l">Photo</span><div class="segsm"><button type="button" data-fit="cover" data-side="dark">Fill the wall</button><button type="button" data-fit="repeat" data-side="dark">Repeat as a tile</button></div></div>
+        <div class="strength" id="sizerow-dark" hidden><span class="fld-l">Tile size</span>
+          <div class="strow"><small>Small</small><input type="range" id="size-dark" data-side="dark" data-k="size" min="80" max="640" step="5" aria-label="Tile size"><small>Big</small><output id="sizeout-dark" for="size-dark"></output></div></div>
+        <label class="chk" id="phonerow-dark" hidden><input type="checkbox" id="phone-dark" data-side="dark"> <span>Also move on phones. Costs battery; off, phones get a still.</span></label>
         <button type="button" class="btn ghost sm" id="replace-dark" data-replace="dark" hidden>Replace photo…</button>
       </div>
       <input type="file" id="bgIn-dark" accept="image/*" hidden>
@@ -176,6 +183,7 @@
 <script src="assets/sounds.js" defer></script>
 <script src="assets/theme.js" defer></script>
 <script src="assets/patterns.js" defer></script>
+<script src="assets/wall.js" defer></script>
 <script src="assets/admin.js" defer></script>
 </body>
 </html>

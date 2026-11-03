@@ -28,5 +28,6 @@
     if (window.Sound) window.Sound.play(dark ? 'toggle.on' : 'toggle.off', 'signature');
   }));
   system.addEventListener('change', (e) => { if (!stored()) set(e.matches, false); });   // no choice made yet: keep following the phone
-  window.Theme = { set, get dark() { return root.classList.contains('dark'); } };
+  const restore = () => { const t = stored(); set(t ? t === 'dark' : system.matches, false); };   // back to the remembered (or the phone's) theme after a temporary switch
+  window.Theme = { set, restore, get dark() { return root.classList.contains('dark'); } };
 })();

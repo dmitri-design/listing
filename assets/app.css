@@ -56,6 +56,7 @@ body::before {
 /* the wall behind everything: a pattern, a photo or an ambient scene the owner picked (per theme); the paper grain stays on top of it */
 .bg { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
 .bg.photo { background-size: cover; background-position: center; }
+.bg.tile { background-repeat: repeat; }
 .bg.scene { background-size: cover; background-position: center; }
 /* a photo or a scene fades out under the hero, so the title, tag line and legend keep their contrast */
 .bg.scene::after, .bg.photo::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(to bottom, var(--cream) 0%, transparent 58%); }
@@ -324,6 +325,8 @@ h1 i { font-style: italic; color: var(--gold); }
 .sheet { border: 0; padding: 0; margin: auto auto 0; width: 100%; max-width: 480px; max-height: 92dvh; border-radius: 22px 22px 0 0; background: var(--paper); color: var(--ink);
   box-shadow: 0 -12px 40px rgba(40,30,10,.25); transition: transform .25s ease-out; }
 .sheet[open] { animation: sheet-in .42s var(--spring); }
+.sheet { overscroll-behavior: contain; }
+html:has(dialog.sheet[open]) { overflow: hidden; }   /* the page stays put under the booking sheet */
 .sheet::backdrop { background: rgba(34,29,23,.4); }
 .sheet-in { display: grid; gap: 12px; padding: 8px 18px calc(18px + env(safe-area-inset-bottom)); }
 .sheet-grab { touch-action: none; }

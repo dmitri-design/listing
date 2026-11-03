@@ -49,9 +49,10 @@
     if (!TOKEN) { show('login'); return; }
     await enter();
   }
+  const curView = () => { const t = $('.seg [role="tab"][aria-selected="true"]'); return t ? t.dataset.view : 'items'; };
   function show(id) {
     for (const s of ['login', 'noapi', 'seed', 'app']) $('#' + s).hidden = s !== id;
-    $('#fab').hidden = id !== 'app';
+    $('#fab').hidden = id !== 'app' || curView() !== 'items';   // the Add button belongs to the Items tab only
   }
   function loginErr(msg) { const e = $('#loginErr'); e.textContent = msg; e.hidden = false; }
   /* → true once the list is on screen. Only a 401 forgets the password: offline, blocked or down keeps it and offers a retry. */
@@ -333,16 +334,29 @@
   const SCENES = [{ id: 'aurora', name: 'Aurora' }, { id: 'swirl', name: 'Swirl' }, { id: 'shift', name: 'Shift' }, { id: 'coalesce', name: 'Coalesce' }, { id: 'pipeline', name: 'Pipeline' }];
   const SWATCHES = [{ id: 'ink', c: '' }, { id: 'gold', c: '#8a6d3b' }, { id: 'green', c: '#8fb08a' }, { id: 'coral', c: '#d99d85' }, { id: 'blue', c: '#7f9bb8' }];
   const ROOM = { light: { wall: '#f4efe4', ink: '#221d17' }, dark: { wall: '#15120e', ink: '#f1e9da' } };
-  const HEX = /^#[0-9a-f]{3,8}$/i, MAXS = { pattern: 60, photo: 70, scene: 70 };   // photos and scenes never go full strength: the hero text sits on them
-  const lookDefaults = (side) => ({ kind: 'none', id: '', color: '', strength: 14, scale: 1, src: '' });
-  let LOOK = null, lookDirty = false;
-  const lookFrom = (doc) => { const bg = (doc.site && doc.site.bg) || {}; return { light: Object.assign(lookDefaults('light'), bg.light || {}), dark: Object.assign(lookDefaults('dark'), bg.dark || {}) }; };
+  const HEX = /^#[0-9a-f]{3,8}$/i, MAXS = { pattern: 60, tile: 100, photo: 70, scene: 70 };   // photos and scenes never go full strength: the hero text sits on them
+  const lookDefaults = () => ({ kind: 'none', id: '', color: '', strength: 14, scale: 1, src: '', size: 0, repeat: false, phone: false });
+  let LOOK = null, lookDirty = false, bgEl = null;
+  const lookFrom = (doc) => { const bg = (doc.site && doc.site.bg) || {}; return { light: Object.assign(lookDefaults(), bg.light || {}), dark: Object.assign(lookDefaults(), bg.dark || {}) }; };
+  const isDark = () => document.documentElement.classList.contains('dark');
+  /* the admin's own wall: while picking, the room being edited; otherwise the saved wall of the theme the admin is in */
+  function showWall(cfg, side) {
+    if (!window.Wall) return;
+    if (side && window.Theme && (side === 'dark') !== isDark()) Theme.set(side === 'dark', false);
+    const s = side || (isDark() ? 'dark' : 'light');
+    if (!bgEl) { bgEl = document.createElement('div'); bgEl.id = 'bg'; bgEl.className = 'bg'; bgEl.setAttribute('aria-hidden', 'true'); document.body.insertBefore(bgEl, document.body.firstChild); }
+    Wall.render(bgEl, cfg || (DOC && DOC.site && DOC.site.bg && DOC.site.bg[s]) || null, { ink: ROOM[s].ink });
+  }
+  window.addEventListener('themechange', () => {   // after the (animated) theme switch: keep the live pick while editing, else the saved wall
+    if (!DOC) return; const side = isDark() ? 'dark' : 'light';
+    showWall(lookDirty && LOOK && curView() === 'look' ? LOOK[side] : null);
+  });
   function renderLook() {
     if (!lookDirty || !LOOK) LOOK = lookFrom(DOC);   // unsaved picks survive a Reload and other tabs' saves
-    renderSide('light'); renderSide('dark'); markLook();
+    renderSide('light'); renderSide('dark'); markLook(); showWall();
   }
   function markLook() { $('#lookActions').hidden = !lookDirty; }
-  function touchLook(side) { lookDirty = true; renderSide(side); markLook(); }
+  function touchLook(side) { lookDirty = true; renderSide(side); markLook(); showWall(LOOK[side], side); }
   const tint = (cfg, room) => HEX.test(cfg.color || '') ? cfg.color : room.ink;
   function renderSide(side) {
     const cfg = LOOK[side], room = ROOM[side], Pt = window.Patterns, color = tint(cfg, room), op = Math.min(1, cfg.strength / 100 * 3);
@@ -350,10 +364,12 @@
     const tile = (kind, id, label, inner) => `<button type="button" class="tile${on(kind, id) ? ' on' : ''}" data-side="${side}" data-kind="${kind}" data-id="${esc(id || '')}" style="--wall:${room.wall};--rink:${room.ink}" aria-pressed="${on(kind, id)}"><span class="tile-art">${inner}</span><span class="tile-lbl">${esc(label)}</span></button>`;
     const head = (t) => `<h4 class="tilesh">${t}</h4>`;
     const pat = (p) => tile('pattern', p.id, p.name.en, `<span class="tile-pat" style="opacity:${p.fixed ? Math.min(1, op * 1.6) : op}">${Pt.svg(p.id, { color: p.fixed ? 'currentColor' : color, scale: .8 })}</span>`);
-    const pats = Pt ? Pt.list : [];
+    const prem = (t) => tile('tile', t.id, t.name, `<span class="tile-rep" style="background-image:url(img/patterns/${t.id}.webp);background-size:${Math.max(40, Math.round(t.w / 2))}px auto"></span>`);
+    const pats = Pt ? Pt.list : [], tiles = Pt ? Pt.tiles : [];
     const camera = '<span class="ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.6"/></svg></span>';
-    const html = [tile('none', '', 'Plain wall', ''), head('Patterns'), ...pats.filter(p => !p.holiday).map(pat), head('Holiday'), ...pats.filter(p => p.holiday).map(pat)]
-      .concat(side === 'dark' ? [head('Scenes · move on a computer, a still on phones'), ...SCENES.map(s => tile('scene', s.id, s.name, `<img src="img/scenes/${s.id}.webp" alt="" loading="lazy">`))] : [])
+    const html = [tile('none', '', 'Plain wall', ''), head('Patterns'), ...pats.filter(p => !p.holiday).map(pat), head('Holiday'), ...pats.filter(p => p.holiday).map(pat),
+        `<details class="tiles-more"${cfg.kind === 'tile' ? ' open' : ''}><summary>Premium <b>${tiles.length}</b></summary><div class="tiles">${tiles.map(prem).join('')}</div></details>`]
+      .concat(side === 'dark' ? [head('Animated backgrounds'), ...SCENES.map(s => tile('scene', s.id, s.name, `<img src="img/scenes/${s.id}.webp" alt="" loading="lazy">`))] : [])
       .concat([head('Your photo'), tile('photo', '', cfg.src ? 'Your photo' : 'Add a photo…', cfg.src ? `<img src="${esc(cfg.src)}" alt="">` : camera)]);
     $(`#tiles-${side}`).innerHTML = html.join('');
     $(`#lookopts-${side}`).hidden = cfg.kind === 'none';
@@ -361,6 +377,11 @@
     const p = Pt && cfg.kind === 'pattern' ? Pt.byId(cfg.id) : null;
     $(`#swrow-${side}`).hidden = !(p && !p.fixed);
     $(`#replace-${side}`).hidden = cfg.kind !== 'photo';
+    const fit = $(`#fit-${side}`); fit.hidden = cfg.kind !== 'photo'; $$('button', fit).forEach(b => b.classList.toggle('on', (b.dataset.fit === 'repeat') === !!cfg.repeat));
+    const tiled = cfg.kind === 'tile' || (cfg.kind === 'photo' && cfg.repeat);
+    $(`#sizerow-${side}`).hidden = !tiled;
+    if (tiled) { const t = cfg.kind === 'tile' && Pt ? Pt.tile(cfg.id) : null, v = cfg.size || (t ? t.w : 300); $(`#size-${side}`).value = v; $(`#sizeout-${side}`).value = v + ' px'; }
+    const ph = $(`#phonerow-${side}`); if (ph) { ph.hidden = cfg.kind !== 'scene'; $(`#phone-${side}`).checked = !!cfg.phone; }
     preview(side);
     const custom = /^#[0-9a-f]{6}$/i.test(cfg.color || '') && !SWATCHES.some(s => s.c.toLowerCase() === cfg.color.toLowerCase());
     $(`#sw-${side}`).innerHTML = SWATCHES.map(s => { const sel = (cfg.color || '').toLowerCase() === s.c.toLowerCase(); return `<button type="button" class="sw${sel ? ' on' : ''}" data-side="${side}" data-c="${s.c}" style="--c:${s.c || room.ink}" aria-label="${s.id}" aria-pressed="${sel}"></button>`; }).join('')
@@ -368,36 +389,39 @@
   }
   /* the strip under the slider shows the wall at the real page strength, with a little paper card on it */
   function preview(side) {
-    const cfg = LOOK[side], room = ROOM[side], Pt = window.Patterns, el = $(`#prev-${side}`), op = Math.min(1, cfg.strength / 100);
-    el.style.background = room.wall; el.style.color = tint(cfg, room);
-    let art = '';
-    if (cfg.kind === 'pattern' && Pt && Pt.byId(cfg.id)) art = `<span class="tile-pat" style="opacity:${op}">${Pt.svg(cfg.id, { color: Pt.byId(cfg.id).fixed ? 'currentColor' : tint(cfg, room), scale: cfg.scale || 1 })}</span>`;
-    else if (cfg.kind === 'photo' && cfg.src) art = `<img src="${esc(cfg.src)}" alt="" style="opacity:${op}">`;
-    else if (cfg.kind === 'scene' && SCENES.some(s => s.id === cfg.id)) art = `<img src="img/scenes/${esc(cfg.id)}.webp" alt="" style="opacity:${op}">`;
-    el.innerHTML = art + '<span class="prev-card"></span>';
+    const cfg = LOOK[side], room = ROOM[side], el = $(`#prev-${side}`);
+    el.style.background = room.wall; el.innerHTML = '<div class="prev-art"></div><span class="prev-card"></span>';
+    if (window.Wall) Wall.render(el.firstChild, cfg, { cls: 'prev-art', ink: room.ink });
   }
   $('#view-look').addEventListener('click', (e) => {
-    const t = e.target.closest('.tile'), sw = e.target.closest('.sw:not(.custom)'), rp = e.target.closest('[data-replace]');
+    const t = e.target.closest('.tile'), sw = e.target.closest('.sw:not(.custom)'), rp = e.target.closest('[data-replace]'), fit = e.target.closest('[data-fit]');
     if (rp) { $(`#bgIn-${rp.dataset.replace}`).click(); return; }
+    if (fit) { const side = fit.dataset.side; LOOK[side].repeat = fit.dataset.fit === 'repeat'; touchLook(side); snd('toggle.on'); return; }
     if (sw) { LOOK[sw.dataset.side].color = sw.dataset.c; touchLook(sw.dataset.side); snd('toggle.on'); return; }
     if (!t) return;
     const side = t.dataset.side, cfg = LOOK[side], kind = t.dataset.kind, id = t.dataset.id;
     if (kind === 'photo' && !cfg.src) { $(`#bgIn-${side}`).click(); return; }   // no photo yet: pick one
     if (kind === cfg.kind && id === (cfg.id || '')) return;
-    if (kind === 'pattern' && cfg.kind !== 'pattern') cfg.strength = lookDefaults(side).strength;   // each kind has its own sensible strength
+    if (kind === 'pattern' && cfg.kind !== 'pattern') cfg.strength = lookDefaults().strength;   // each kind has its own sensible strength
+    if (kind === 'tile' && cfg.kind !== 'tile') { cfg.strength = 50; cfg.size = 0; }
     if (kind === 'scene') cfg.strength = MAXS.scene;
     if (kind === 'photo' && cfg.kind !== 'photo') cfg.strength = Math.max(Math.min(cfg.strength, MAXS.photo), 35);
     cfg.kind = kind; cfg.id = id; touchLook(side); snd('toggle.on');
   });
   $('#view-look').addEventListener('input', (e) => {
-    const side = e.target.dataset.side || (e.target.id || '').replace(/^str-/, ''); if (!LOOK || !LOOK[side]) return;
-    if (e.target.type === 'range') {
-      LOOK[side].strength = +e.target.value; $(`#out-${side}`).value = e.target.value; lookDirty = true; markLook();
-      const op = Math.min(1, LOOK[side].strength / 100 * 3); $$(`#tiles-${side} .tile-pat`).forEach(el => { el.style.opacity = op; }); preview(side);
+    const side = e.target.dataset.side; if (!side || !LOOK || !LOOK[side]) return;
+    const cfg = LOOK[side];
+    if (e.target.dataset.k === 'strength') {
+      cfg.strength = +e.target.value; $(`#out-${side}`).value = e.target.value; lookDirty = true; markLook();
+      const op = Math.min(1, cfg.strength / 100 * 3); $$(`#tiles-${side} .tile-pat`).forEach(el => { el.style.opacity = op; }); preview(side); showWall(cfg, side);
     }
-    if (e.target.type === 'color') { if (HEX.test(e.target.value)) LOOK[side].color = e.target.value; lookDirty = true; preview(side); }
+    if (e.target.dataset.k === 'size') { cfg.size = +e.target.value; $(`#sizeout-${side}`).value = e.target.value + ' px'; lookDirty = true; markLook(); preview(side); showWall(cfg, side); }
+    if (e.target.type === 'color') { if (HEX.test(e.target.value)) cfg.color = e.target.value; lookDirty = true; preview(side); showWall(cfg, side); }
   });
-  $('#view-look').addEventListener('change', (e) => { if (e.target.type === 'color') touchLook(e.target.dataset.side); });
+  $('#view-look').addEventListener('change', (e) => {
+    if (e.target.type === 'color') touchLook(e.target.dataset.side);
+    if (e.target.id === 'phone-dark') { LOOK.dark.phone = e.target.checked; lookDirty = true; markLook(); snd(e.target.checked ? 'toggle.on' : 'toggle.off'); }
+  });
   for (const side of ['light', 'dark']) $(`#bgIn-${side}`).addEventListener('change', async (e) => {
     const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
     if (saving) { toast('Still saving…'); return; }
@@ -415,19 +439,28 @@
   });
   async function saveLook() {
     const doc = JSON.parse(JSON.stringify(DOC));
-    const clean = (c) => { const o = { kind: c.kind || 'none' }; if (o.kind === 'pattern' || o.kind === 'scene') o.id = c.id; if (o.kind === 'photo') o.src = c.src; if (o.kind !== 'none') { o.strength = Math.min(+c.strength || 10, MAXS[o.kind] || 60); if (HEX.test(c.color || '')) o.color = c.color; if (c.scale && c.scale !== 1) o.scale = c.scale; } return o; };
+    const clean = (c) => {
+      const o = { kind: c.kind || 'none' };
+      if (o.kind === 'pattern' || o.kind === 'scene' || o.kind === 'tile') o.id = c.id;
+      if (o.kind === 'photo') { o.src = c.src; if (c.repeat) o.repeat = true; }
+      if ((o.kind === 'tile' || (o.kind === 'photo' && c.repeat)) && +c.size) o.size = +c.size;
+      if (o.kind === 'scene' && c.phone) o.phone = true;
+      if (o.kind !== 'none') o.strength = Math.min(+c.strength || 10, MAXS[o.kind] || 60);
+      if (o.kind === 'pattern') { if (HEX.test(c.color || '')) o.color = c.color; if (c.scale && c.scale !== 1) o.scale = c.scale; }
+      return o;
+    };
     doc.site.bg = { light: clean(LOOK.light), dark: clean(LOOK.dark) };
     if (!await save(doc, 'Look saved')) return false;   // save() also drops the wall photo this one replaced
     for (const s of ['light', 'dark']) if (LOOK[s].src && LOOK[s].kind !== 'photo') dropUpload(LOOK[s].src);   // uploaded, then not used
-    lookDirty = false; LOOK = null; renderLook(); return true;
+    lookDirty = false; LOOK = null; if (window.Theme) Theme.restore(); renderLook(); return true;
   }
   $('#lookSave').addEventListener('click', saveLook);
   /* leaving the Look tab, Reload or Sign out with unsaved picks asks first; Discard also throws away photos uploaded for them */
   async function guardLook() {
-    if (!lookDirty) return true;
+    if (!lookDirty) { if (window.Theme) Theme.restore(); return true; }
     const v = await ask({ title: 'Unsaved look', text: 'Save it, or throw it away?', buttons: [{ label: 'Save look', value: 'save', kind: 'primary' }, { label: 'Discard', value: 'discard', kind: 'ghost danger' }, { label: 'Keep editing', value: 'keep', kind: 'ghost' }] });
     if (v === 'save') return await saveLook();
-    if (v === 'discard') { for (const s of ['light', 'dark']) if (LOOK[s].src) dropUpload(LOOK[s].src); lookDirty = false; LOOK = null; renderLook(); snd('toggle.off'); return true; }
+    if (v === 'discard') { for (const s of ['light', 'dark']) if (LOOK[s].src) dropUpload(LOOK[s].src); lookDirty = false; LOOK = null; if (window.Theme) Theme.restore(); renderLook(); snd('toggle.off'); return true; }
     return false;
   }
 

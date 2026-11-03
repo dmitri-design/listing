@@ -139,7 +139,7 @@ function createCanvas() {
 }
 
 function resize() {
-	const { innerWidth, innerHeight } = window;
+	const k = window.SceneScale || 1, innerWidth = Math.round(window.innerWidth * k), innerHeight = Math.round(window.innerHeight * k);   // k < 1: a smaller canvas stretched by CSS (phones)
 	
 	canvas.a.width = innerWidth;
   canvas.a.height = innerHeight;
