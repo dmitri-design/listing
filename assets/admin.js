@@ -139,6 +139,7 @@
     $$('[data-l2]').forEach(el => { el.textContent = info.label; });
     $$('[data-l2-input]').forEach(el => { el.setAttribute('lang', L2); if (window.Langs && Langs.info(L2).rtl) el.dir = 'rtl'; else el.removeAttribute('dir'); });
     $$('[data-l2-cur]').forEach(el => { el.textContent = DOC.site.currency ? `(${DOC.site.currency})` : ''; });
+    $$('[data-l2-name]').forEach(el => { el.textContent = info.name || info.label; });
   }
   const tierOf = (id) => DOC.tiers.find(t => t.id === id) || DOC.tiers[0];
   const sorted = () => DOC.items.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -515,6 +516,50 @@
     $('#marketAdd').innerHTML = left.map(c => `<option value="${c}">${Langs.flag(c)} ${esc(Langs.regionName(c, 'en'))}</option>`).join('');
     $('#marketAddBtn').disabled = SETUP_MARKETS.length >= 6 || !left.length;
   }
+  /* today's rate for the chosen currency (typed values always win; a fetch only fills the box) */
+  async function fetchRate(quiet) {
+    const f = $('#setupForm'), cur = f.elements.currency.value; if (!cur || !window.Langs) return;
+    const b = $('#rateFetch'); b.disabled = true;
+    try { const r = await Langs.rates(); const v = r.usd[cur.toLowerCase()]; if (!v) throw new Error('no ' + cur); f.elements.rate.value = String(+v.toFixed(v < 2 ? 4 : 2)); $('#rateHelp').textContent = `1 USD = ${f.elements.rate.value} ${cur}, as of ${r.date}. Typed values win; ↻ refreshes.`; if (!quiet) snd('toggle.on'); }
+    catch (e) { if (!quiet) { toast("Couldn't fetch today's rate. Type it in.", true); snd('state.error'); } }
+    b.disabled = false;
+  }
+  $('#rateFetch').addEventListener('click', () => fetchRate(false));
+  $('#curSel').addEventListener('change', () => { const f = $('#setupForm'); if (f.elements.currency.value && !f.elements.rate.value.trim()) fetchRate(true); });
+  /* translate: every owner text still missing in the second language goes to the Worker, which asks Claude; nothing written is touched */
+  function xlStrings(doc, to) {
+    const out = [], add = (id, v) => { if (!v || typeof v !== 'object' || !v.en) return; if (v[to] && v[to] !== v.en) return; out.push({ id, text: v.en }); };
+    for (const k of ['title', 'brand', 'tagline', 'legend', 'footer', 'meta']) add('site.' + k, doc.site[k]);
+    doc.tiers.forEach((tr, i) => ['name', 'short', 'range', 'blurb'].forEach(k => add(`tier.${i}.${k}`, tr[k])));
+    for (const k of ['gotNote', 'gotSign']) add('ui.' + k, doc.ui[k]);
+    doc.items.forEach(it => { ['name', 'desc', 'note'].forEach(k => add(`item.${it.id}.${k}`, it[k])); (it.where || []).forEach((w, n) => add(`item.${it.id}.where.${n}`, w.t)); });
+    return out;
+  }
+  function xlApply(doc, to, out) {
+    let n = 0;
+    for (const { id, text } of out) {
+      const p = String(id).split('.'); let o = null;
+      if (p[0] === 'site') o = doc.site[p[1]]; else if (p[0] === 'ui') o = doc.ui[p[1]]; else if (p[0] === 'tier') o = doc.tiers[+p[1]] && doc.tiers[+p[1]][p[2]];
+      else if (p[0] === 'item') { const it = doc.items.find(i => i.id === p[1]); if (!it) continue; o = p[2] === 'where' ? (it.where && it.where[+p[3]] && it.where[+p[3]].t) : it[p[2]]; }
+      if (o && typeof o === 'object' && (!o[to] || o[to] === o.en) && typeof text === 'string' && text.trim()) { o[to] = text.trim(); n++; }
+    }
+    return n;
+  }
+  $('#xlBtn').addEventListener('click', async () => {
+    if (saving) { toast('Still saving…'); return; }
+    const to = L2, doc = JSON.parse(JSON.stringify(DOC)), strings = xlStrings(doc, to), help = $('#xlHelp'), b = $('#xlBtn');
+    if (!strings.length) { help.textContent = `Everything already has a ${Langs.info(to).name} version.`; toast('Nothing left to translate'); return; }
+    b.disabled = true; help.textContent = `Translating ${strings.length} texts…`;
+    const r = await fetch(`${API}/api/lists/${LIST}/admin/translate`, { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ to, strings }), signal: giveUp(120000) }).catch(() => null);
+    const jr = r && r.ok ? await r.json().catch(() => null) : null;
+    b.disabled = false;
+    if (!jr) {
+      const why = r && r.status === 503 ? 'The API has no translation key yet. On the Mac: npx wrangler secret put ANTHROPIC_API_KEY, then node tools/deploy-api.mjs.' : r && r.status === 401 ? 'Password rejected' : 'Translation failed. Check the connection and try again.';
+      help.textContent = why; toast(r && r.status === 503 ? 'No translation key on the API yet' : 'Translation failed', true); snd('state.error'); return;
+    }
+    const n = xlApply(doc, to, jr.out || []);
+    if (await save(doc, `Translated ${n} texts`)) { help.textContent = `Done: ${n} texts now in ${Langs.info(to).name}. Review them in Items and Texts.`; renderAll(); }
+  });
   $('#marketRows').addEventListener('click', (e) => { const b = e.target.closest('[data-mx]'); if (!b) return; SETUP_MARKETS = SETUP_MARKETS.filter(c => c !== b.dataset.mx); renderMarkets(); snd('toggle.off'); });
   $('#marketAddBtn').addEventListener('click', () => { const c = $('#marketAdd').value; if (!c || SETUP_MARKETS.includes(c) || SETUP_MARKETS.length >= 6) return; SETUP_MARKETS.push(c); renderMarkets(); snd('toggle.on'); });
   $('#setupForm').addEventListener('submit', async (e) => {

@@ -97,5 +97,6 @@ r = await call('PUT', '/api/lists/dmitri', { body: JSON.stringify({ ...cur, upda
 r = await call('DELETE', '/api/lists/dmitri/images/osprey', { headers: { Authorization: 'Bearer secret-admin-token-xyz' } }); ok(r.status === 204 && !T.images.has('dmitri/osprey'), 'image delete');
 const envNoAdmin = { ...env, ADMIN_TOKEN: undefined };
 r = await worker.fetch(new Request('https://api.test/api/lists/dmitri/admin/ping', { headers: { Authorization: 'Bearer secret-admin-token-xyz' } }), envNoAdmin); ok(r.status === 503, 'admin disabled without secret → 503');
+r = await call('POST', '/api/lists/dmitri/admin/translate', { headers: { Authorization: 'Bearer secret-admin-token-xyz', 'Content-Type': 'application/json' }, body: JSON.stringify({ to: 'tr', strings: [{ id: 'site.title', text: 'Wishlist' }] }) }); ok(r.status === 503 && (await r.json()).error === 'no_key', 'translate without ANTHROPIC_API_KEY → 503 no_key');
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

@@ -66,5 +66,16 @@
   function money(amount, currency, lang) {
     try { return new Intl.NumberFormat(lang, { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount); } catch (e) { return Math.round(amount) + ' ' + currency; }
   }
-  window.Langs = { LANGS, CURRENCIES, COUNTRIES, regionName, flag, money, info: (code) => LANGS[code] || { label: String(code || '').toUpperCase().slice(0, 3), name: code, script: 'other' } };
+  /* "$1,200", "~$55", "$11 800", "$3.5k", "$42–50" → 1200, 55, 11800, 3500, 42; nothing numeric → null */
+  function priceUSD(v) {
+    const m = String(v == null ? '' : v).replace(/\u00a0/g, ' ').match(/(\d(?:[\d,.]|\s(?=\d))*)\s*(k)?/i); if (!m) return null;
+    const n = parseFloat(m[1].replace(/[\s,]/g, '')); return isFinite(n) ? n * (m[2] ? 1000 : 1) : null;
+  }
+  /* today's USD rates from a free, keyless, public-domain feed (fawazahmed0/currency-api on jsDelivr); used by the admin only */
+  async function rates() {
+    const r = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.min.json', { cache: 'no-cache' });
+    if (!r.ok) throw new Error('rates ' + r.status);
+    const j = await r.json(); return { date: j.date, usd: j.usd || {} };
+  }
+  window.Langs = { LANGS, CURRENCIES, COUNTRIES, regionName, flag, money, priceUSD, rates, info: (code) => LANGS[code] || { label: String(code || '').toUpperCase().slice(0, 3), name: code, script: 'other' } };
 })();

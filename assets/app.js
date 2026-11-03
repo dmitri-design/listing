@@ -35,6 +35,14 @@ const MARK = { y: '✓', g: '~', n: '✗' };
 /* the markets a list marks availability for (site.markets, ISO codes, EU as a block; up to six fit a card back) */
 const MARKETS = () => { const m = DATA && DATA.site && Array.isArray(DATA.site.markets) && DATA.site.markets.length ? DATA.site.markets : ['EU', 'TR', 'RU']; return m.map(c => String(c).toUpperCase()).filter(c => /^[A-Z]{2}$/.test(c)).slice(0, 6); };
 const availOf = (it, code) => (it.avail && (it.avail[code] ?? it.avail[code.toLowerCase()])) || 'n';
+/* the price in both languages: the second one as typed, else converted from the USD price at the list's rate (Setup) */
+const priceOf = (it) => {
+  const p = it.price, en = pick(p, 'en'), typed = p && typeof p === 'object' ? (p[L2] || '') : '';
+  if (typed) return { en, [L2]: typed };
+  const site = DATA && DATA.site;
+  if (site && site.currency && +site.rate > 0 && window.Langs) { const usd = Langs.priceUSD(en); if (usd != null) return { en, [L2]: '≈ ' + Langs.money(usd * site.rate, site.currency, L2) }; }
+  return { en, [L2]: en };
+};
 const regionLabel = (code) => ({ en: window.Langs ? Langs.regionName(code, 'en') : code, [L2]: window.Langs ? Langs.regionName(code, L2) : code });
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
 const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
@@ -223,7 +231,7 @@ function cardHTML(it, tier, idx, ri, eager) {
         <svg class="clip" style="--pin:${esc(pin)};--tilt:${tilt}" aria-hidden="true"><use href="#pin"/></svg>
         <div class="card${got ? ' got' : ''}${booked ? ' booked' : ''}" data-id="${id}">
           <div class="face front" style="--c:${esc(tier.c)}" role="button" tabindex="0" aria-labelledby="n-${id}${got ? ` s-${id}` : ''}${booked ? ` b-${id}` : ''}" aria-expanded="false">
-            <div class="price">${t(it.price)}</div>
+            <div class="price">${t(priceOf(it))}</div>
             ${got ? `<div class="stamp" id="s-${id}">${t(ui.got)} <span aria-hidden="true">✓</span></div>` : ''}
             ${imgHTML(it, 'imgbox', eager)}
             <h3 class="name" id="n-${id}">${t(it.name)}</h3>
@@ -234,7 +242,7 @@ function cardHTML(it, tier, idx, ri, eager) {
           ${got ? gotBackHTML(it, ui) : `<div class="face back" inert>
             ${FX}
             <div class="hd">${thumbHTML(it)}<div><div class="lbl">${t(ui.approx)}</div><div class="note">${t(it.note || '')}</div></div></div>
-            <div class="big">${t(it.price)}</div>
+            <div class="big">${t(priceOf(it))}</div>
             <div class="avail${markets.length > 3 ? ' two' : ''}" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${av}</div>
             <div class="where"><div class="lbl">${t(ui.where)}</div><ul>${where}</ul></div>
             <div class="bfoot"><div class="bk">${bookPart(it)}</div><button type="button" class="hint"><span class="sr">${t(ui.back)}</span><span aria-hidden="true">↻</span></button></div>

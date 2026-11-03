@@ -10,6 +10,7 @@
 //
 // Owner (Authorization: Bearer <ADMIN_TOKEN>, a Worker secret; admin.html keeps it in localStorage):
 //   GET    /api/lists/:list/admin/ping             → 204 (token check)
+//   POST   /api/lists/:list/admin/translate        body { to, strings: [{ id, text }] } → { out: [{ id, text }] } via Claude (secret ANTHROPIC_API_KEY; 503 without it)
 //   PUT    /api/lists/:list                        body = whole document → { updated } | 409 { error: 'stale', updated }
 //                                                  (body.updated must equal the stored one; the first save always goes in)
 //   POST   /api/lists/:list/images/:id             body = image bytes, Content-Type image/webp|jpeg|png → { url, updated }
@@ -57,6 +58,7 @@ export default {
         if (p[3] === 'admin') {
           const auth = await adminOk(req, env); if (auth !== true) return auth(cors);
           if (p.length === 5 && p[4] === 'ping') return new Response(null, { status: 204, headers: { ...cors, 'Cache-Control': 'no-store' } });
+          if (p.length === 5 && p[4] === 'translate' && req.method === 'POST') return await translate(req, env, cors);
           if (p.length === 5 && p[4] === 'bookings' && req.method === 'GET') return out(await ownerBookings(env, list), 200, cors);
           if (p.length === 6 && p[4] === 'bookings' && ITEM.test(p[5]) && req.method === 'DELETE') return await ownerUnbook(env, list, p[5], cors);
         }
@@ -207,6 +209,36 @@ async function unbook(req, env, list, item, cors) {
   ).bind(Math.floor(Date.now() / 1000), list, item, await sha256(m[1])).run();
   if (r.meta && r.meta.changes === 1) return new Response(null, { status: 204, headers: { ...cors, 'Cache-Control': 'no-store' } });
   return out({ error: 'not_found' }, 404, cors);
+}
+
+/* The owner asks for the list in another language: every text still missing goes to Claude in one call. Owner-only, needs the
+   ANTHROPIC_API_KEY secret; at most 300 texts / 60 KB per call. Brand names, prices, emojis and <i> tags stay as they are. */
+const XL_MODEL = 'claude-sonnet-5-5';
+async function translate(req, env, cors) {
+  if (!env.ANTHROPIC_API_KEY) return out({ error: 'no_key' }, 503, cors);
+  if (!(req.headers.get('Content-Type') || '').toLowerCase().startsWith('application/json')) return out({ error: 'content_type' }, 415, cors);
+  const raw = await req.text(); if (raw.length > 60000) return out({ error: 'too_large' }, 413, cors);
+  let body; try { body = JSON.parse(raw); } catch { return out({ error: 'bad_json' }, 400, cors); }
+  const to = String(body && body.to || '').toLowerCase();
+  if (!/^[a-z]{2,3}$/.test(to) || to === 'en') return out({ error: 'bad_lang' }, 400, cors);
+  const strings = (Array.isArray(body.strings) ? body.strings : []).filter(s => s && typeof s.id === 'string' && /^[\w.-]{1,80}$/.test(s.id) && typeof s.text === 'string' && s.text.trim()).slice(0, 300).map(s => ({ id: s.id, text: s.text.slice(0, 2000) }));
+  if (!strings.length) return out({ out: [] }, 200, cors);
+  const prompt = `You translate the texts of a personal gift wishlist web page that someone shares with friends. Target language code: "${to}". ` +
+    `Tone: informal, warm, natural for a native speaker, concise (the texts sit on small cards). Keep brand and product names, model numbers, prices, ` +
+    `currency symbols, emojis, the character ✓ and any HTML tags such as <i>…</i> exactly as they are. Translate only the words. ` +
+    `Reply with ONLY a JSON array of objects {"id": …, "text": …}, same ids, same order, nothing else.\n\n` + JSON.stringify(strings);
+  let r;
+  try {
+    r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: XL_MODEL, max_tokens: 8000, messages: [{ role: 'user', content: prompt }] }) });
+  } catch (e) { return out({ error: 'upstream' }, 502, cors); }
+  if (!r.ok) { console.error('translate upstream', r.status, (await r.text().catch(() => '')).slice(0, 300)); return out({ error: 'upstream', status: r.status }, 502, cors); }
+  const j = await r.json().catch(() => null);
+  const text = ((j && j.content) || []).map(c => c && c.text || '').join('');
+  const m = text.match(/\[[\s\S]*\]/); let arr;
+  try { arr = JSON.parse(m ? m[0] : '[]'); } catch { return out({ error: 'bad_output' }, 502, cors); }
+  const ids = new Set(strings.map(s => s.id));
+  return out({ out: (Array.isArray(arr) ? arr : []).filter(x => x && ids.has(x.id) && typeof x.text === 'string').map(x => ({ id: x.id, text: x.text.slice(0, 2000) })) }, 200, cors);
 }
 
 /* ---------- helpers ---------- */

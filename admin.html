@@ -86,9 +86,11 @@
     <section id="view-setup" class="view" role="tabpanel" hidden>
       <form id="setupForm" class="form">
         <label class="fld"><span>Second language</span><select name="lang2" id="lang2Sel"></select></label>
-        <p class="help">English is always the first language. ✓ = the page's own words (buttons, hints, errors) are already translated; you can tweak them in Texts → Small words. Names and descriptions are yours to write.</p>
-        <div class="pair"><label class="fld"><span>Currency for the second price</span><select name="currency" id="curSel"></select></label><label class="fld"><span>1 USD =</span><input name="rate" type="text" inputmode="decimal" placeholder="e.g. 34.5"></label></div>
-        <p class="help" id="rateHelp">With a rate, the item editor gets a ≈ button that fills the second price from the USD one. You can always type your own.</p>
+        <p class="help">English is always the first language. ✓ = the page's own words (buttons, hints, errors) are already translated; you can tweak them in Texts → Small words.</p>
+        <div class="fld"><button type="button" class="btn ghost" id="xlBtn">Translate the list into <b data-l2-name>Русский</b></button>
+          <p class="help" id="xlHelp">Fills in everything still missing in that language: title, lines, tiers, item names, descriptions, notes and shop labels. Nothing already written is touched. Review the result in Items and Texts.</p></div>
+        <div class="pair"><label class="fld"><span>Currency for the second price</span><select name="currency" id="curSel"></select></label><label class="fld"><span>1 USD =</span><div class="withbtn"><input name="rate" type="text" inputmode="decimal" placeholder="e.g. 34.5"><button type="button" class="btn ghost sm" id="rateFetch" title="Today's rate">↻</button></div></label></div>
+        <p class="help" id="rateHelp">Pick a currency and ↻ fetches today's rate (you can type your own). On the page, items without a typed second price show one converted from USD; in the editor, ≈ writes it in for you.</p>
         <div class="fld"><span>Countries on the card back</span>
           <div id="marketRows"></div>
           <div class="addrow"><select id="marketAdd" aria-label="Country to add"></select><button type="button" class="btn ghost sm" id="marketAddBtn">＋ Add</button></div>
@@ -161,7 +163,6 @@
         <label class="fld"><span>Id (url slug)</span><input name="id" type="text" pattern="[a-z0-9][a-z0-9-]*" placeholder="auto" autocapitalize="none"></label>
         <div class="fld"><span>Availability</span>
           <div class="avail-rows" id="availRows"></div>
-          </div>
           <p class="help">✓ sold officially · ~ import or resale · ✗ not there</p>
         </div>
         <div class="fld"><span>Where to look</span><div id="whereRows"></div><button type="button" class="btn ghost sm" id="whereAdd">＋ link</button></div>
