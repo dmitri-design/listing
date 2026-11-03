@@ -55,13 +55,32 @@ input[lang="ru"], textarea[lang="ru"] { background: #fffaf0; }
 
 /* items */
 .tiergroup { margin: 6px 0 18px; }
-.tiergroup h2 { font: 400 20px/1.2 var(--serif); margin: 0 0 6px; display: flex; align-items: center; gap: 8px; }
-.tiergroup h2 .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--c); }
-.tiergroup h2 small { color: var(--muted); font: 12px var(--sans); letter-spacing: .04em; text-transform: uppercase; margin-left: auto; }
+.tiergroup h2 { font: 400 20px/1.2 var(--serif); margin: 0 0 6px; display: flex; align-items: center; gap: 6px; }
+.tiergroup h2 .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--c); flex: none; margin-right: 2px; }
+.tiergroup h2 .tname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tiergroup h2 small { color: var(--muted); font: 12px var(--sans); letter-spacing: .04em; text-transform: uppercase; margin-left: auto; flex: none; }
+/* the pencil: barely there until you need it (44 pt target around a 15 px glyph) */
+.tedit { appearance: none; border: 0; background: none; color: #c4bdb0; width: 44px; height: 44px; margin: -12px 0 -12px -6px; flex: none; display: grid; place-items: center; border-radius: 12px; cursor: pointer; }
+.tedit:hover, .tedit:focus-visible { color: var(--ink); background: var(--cream-2); outline: none; }
+.tedit svg { width: 15px; height: 15px; }
+.tmode { font-size: 14px; min-height: 44px; margin: -12px -4px -12px 0; flex: none; }
+.tbar { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
+.tbar .help { margin: 0; }
 .list { list-style: none; margin: 0; padding: 0; background: var(--paper); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.list li { display: flex; align-items: stretch; background: var(--paper); }
 .list li + li { border-top: 1px solid var(--cream-2); }
-.row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 8px 12px 8px 10px; appearance: none; border: 0; background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.row { display: flex; align-items: center; gap: 12px; flex: 1 1 auto; min-width: 0; min-height: 64px; padding: 8px 12px 8px 10px; appearance: none; border: 0; background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
 .row:active { background: var(--cream-2); }
+/* reorder mode (Apple edit mode): rows stop opening, a grip appears on the right, drag it (or focus it and use ↑ ↓) */
+.grip { display: none; flex: none; width: 52px; appearance: none; border: 0; background: none; color: #b9b2a4; place-items: center; cursor: grab; touch-action: none; border-left: 1px solid var(--cream-2); }
+.grip svg { width: 20px; height: 20px; }
+.grip:focus-visible { outline: 2px solid #8fb08a; outline-offset: -3px; }
+.tiergroup.editing .grip { display: grid; }
+.tiergroup.editing .chev { display: none; }
+.tiergroup.editing .row { cursor: default; }
+.tiergroup.editing .row:active { background: none; }
+.list li.dragging { position: relative; z-index: 3; box-shadow: 0 10px 28px rgba(40,30,10,.28); border-top-color: transparent; border-radius: 12px; }
+.list li.dragging .grip { cursor: grabbing; }
 .thumb { flex: none; width: 48px; height: 48px; border-radius: 10px; background: var(--cream-2); display: grid; place-items: center; overflow: hidden; }
 .thumb img { max-width: 90%; max-height: 90%; }
 .thumb.photo img { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: cover; }
@@ -90,7 +109,14 @@ input[lang="ru"], textarea[lang="ru"] { background: #fffaf0; }
 .sheet-top .link:last-child { justify-self: end; }
 .sheet-body { overflow: auto; padding: 14px 16px calc(24px + env(safe-area-inset-bottom)); -webkit-overflow-scrolling: touch; }
 .photo { display: grid; gap: 10px; margin-bottom: 14px; }
-.photo-box { height: 150px; border-radius: 14px; background: var(--paper); border: 1px dashed var(--line); display: grid; place-items: center; overflow: hidden; color: var(--muted); font-size: 13px; }
+/* the photo box is the control: tap it, drop a file on it, or paste one while the editor is open */
+.photo-box { height: 150px; border-radius: 14px; background: var(--paper); border: 1px dashed var(--line); display: grid; place-items: center; overflow: hidden; color: var(--muted); font-size: 13px; cursor: pointer; transition: border-color .15s, background .15s; }
+.photo-box:focus-visible { outline: 2px solid #8fb08a; outline-offset: 2px; }
+.photo-box.over { border-color: var(--ink); background: var(--cream-2); }
+.photo-box .ph { display: grid; justify-items: center; gap: 3px; padding: 0 18px; text-align: center; pointer-events: none; }
+.photo-box .ph svg { width: 26px; height: 26px; margin-bottom: 4px; color: #b9b2a4; }
+.photo-box .ph b { color: var(--ink); font-size: 15px; font-weight: 600; }
+.photo-box .ph span { font-size: 12px; }
 .photo-box img { max-width: 92%; max-height: 92%; }
 .photo-box.photo img { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: cover; }
 .photo-box svg { width: 60%; height: 60%; }
@@ -103,10 +129,32 @@ input[lang="ru"], textarea[lang="ru"] { background: #fffaf0; }
 .wrow [data-wu] { grid-column: 1 / -2; }
 .wrow .btn { grid-column: -2 / -1; grid-row: 1; min-width: 44px; padding: 0; }
 @media (max-width: 420px) { .wrow { grid-template-columns: 1fr auto; } .wrow [data-wr], .wrow [data-wu] { grid-column: 1 / -1; } }
-.orderbtns { display: flex; gap: 8px; }
 .danger-zone { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
 .actions { margin-top: 6px; }
-@media (min-width: 720px) { .sheet { margin: auto; border-radius: 22px; height: auto; max-height: 90vh; } }
+/* desktop: a sheet is as tall as its content (top:0 + bottom:0 + height:auto would stretch it), the body scrolls past 90vh */
+@media (min-width: 720px) { .sheet { margin: auto; border-radius: 22px; height: fit-content; max-height: 90vh; } .sheet-in { height: auto; max-height: 90vh; } }
+
+/* small words editor (Texts tab) */
+.words { margin: 4px 0 16px; border-top: 1px solid var(--line); padding-top: 6px; }
+.words summary { cursor: pointer; font-weight: 600; font-size: 14px; min-height: 44px; display: flex; align-items: center; gap: 8px; list-style: none; }
+.words summary::-webkit-details-marker { display: none; }
+.words summary::before { content: "›"; display: inline-block; color: var(--muted); transition: transform .15s; width: 10px; }
+.words[open] summary::before { transform: rotate(90deg); }
+.words summary b { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--cream-2); color: var(--muted); font-size: 11px; }
+.wordrow { display: grid; grid-template-columns: 150px 1fr 1fr; gap: 6px; align-items: center; margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+.wordrow > span { line-height: 1.25; }
+@media (max-width: 560px) { .wordrow { grid-template-columns: 1fr; gap: 4px; margin-bottom: 12px; } }
+
+/* a question in the way (unsaved changes, tier hint): iOS action-sheet shape, one decision, biggest button = the safe one */
+.sheet.mini { height: fit-content; max-height: none; width: calc(100% - 16px); margin: auto 8px calc(8px + env(safe-area-inset-bottom)); border-radius: 22px; }
+.ask-in { padding: 16px 14px 14px; }
+.ask-in h2 { margin: 2px 0 4px; font: 600 17px/1.3 var(--sans); text-align: center; }
+.ask-in p { margin: 0 0 14px; text-align: center; color: var(--muted); font-size: 14px; line-height: 1.4; }
+.ask-in p[hidden] { display: none; }
+.ask-btns { display: grid; gap: 8px; }
+.ask-btns .btn { width: 100%; min-height: 50px; font-size: 16px; }
+.ask-btns .btn.danger { border-color: transparent; background: #f6e4e2; }
+@media (min-width: 720px) { .sheet.mini { margin: auto; max-width: 380px; } }
 
 /* toast (Velvet UI "arrival") */
 .toast { position: fixed; z-index: 40; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); display: flex; align-items: center; gap: 9px; padding: 11px 14px; border-radius: 10px; background: var(--paper); border: 1px solid var(--line); box-shadow: 0 6px 20px rgba(20,20,22,.08); font: 600 13px/1.3 var(--sans); animation: toast-in .38s cubic-bezier(.16,1,.3,1); }

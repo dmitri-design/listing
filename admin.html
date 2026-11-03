@@ -65,7 +65,10 @@
         <label class="fld"><span>Thank-you note on "got it" cards · EN</span><textarea name="ui.gotNote.en" rows="3"></textarea></label>
         <label class="fld"><span>Thank-you note · RU</span><textarea name="ui.gotNote.ru" rows="3" lang="ru"></textarea></label>
         <div class="pair"><label class="fld"><span>Signature · EN</span><input name="ui.gotSign.en" type="text"></label><label class="fld"><span>· RU</span><input name="ui.gotSign.ru" type="text" lang="ru"></label></div>
-        <p class="help">Tier names and the small UI words live in the JSON; ask Claude Code if you want them changed.</p>
+        <details class="words" id="words"><summary>Small words on the page <b id="wordsCount"></b></summary>
+          <p class="help">Buttons, labels and messages. Changes show after Save texts. Tier names: the pencil next to a tier in Items.</p>
+          <div id="wordsList"></div>
+        </details>
         <div class="actions"><button type="submit" class="btn primary">Save texts</button></div>
       </form>
     </section>
@@ -84,13 +87,13 @@
       <div class="sheet-top"><button type="button" class="link" id="edCancel">Cancel</button><h2 id="edTitle">Edit item</h2><button type="submit" class="link strong" id="edSave">Save</button></div>
       <div class="sheet-body">
         <div class="photo">
-          <div class="photo-box" id="photoBox"></div>
+          <div class="photo-box" id="photoBox" role="button" tabindex="0" aria-label="Add a photo"></div>
           <div class="photo-acts">
             <label class="btn ghost"><input type="file" id="photoIn" accept="image/*" hidden>Choose photo</label>
             <button type="button" class="btn ghost" id="photoRemove">Remove</button>
           </div>
           <div class="segsm" id="kindSeg"><button type="button" data-v="cut">Cut-out</button><button type="button" data-v="photo">Photo</button></div>
-          <p class="help">Phone photos upload as framed photos. For a cut-out (no background), run it through Claude Code later.</p>
+          <p class="help">Product centered, 800 px or more. A transparent PNG becomes a cut-out by itself; anything else shows as a framed photo. Want a cut-out from a normal photo? Ask Claude Code.</p>
         </div>
         <div class="pair"><label class="fld"><span>Name · EN</span><input name="name.en" type="text" required></label><label class="fld"><span>Name · RU</span><input name="name.ru" type="text" lang="ru"></label></div>
         <label class="fld"><span>Description · EN</span><textarea name="desc.en" rows="2"></textarea></label>
@@ -109,11 +112,30 @@
         </div>
         <div class="fld"><span>Where to look</span><div id="whereRows"></div><button type="button" class="btn ghost sm" id="whereAdd">＋ link</button></div>
         <div class="fld"><span>Status</span><div class="segsm" id="statusSeg"><button type="button" data-v="wanted">Wanted</button><button type="button" data-v="got">Got it ✓</button><button type="button" data-v="dropped">Hidden</button></div></div>
-        <div class="fld" id="orderFld"><span>Order in its tier</span><div class="orderbtns"><button type="button" class="btn ghost sm" id="moveUp">↑ Move up</button><button type="button" class="btn ghost sm" id="moveDown">↓ Move down</button></div></div>
         <div class="fld danger-zone" id="deleteFld"><button type="button" class="btn ghost danger" id="deleteBtn">Delete item</button></div>
         <p class="err" id="edErr" role="alert" hidden></p>
       </div>
     </form>
+  </dialog>
+
+  <dialog id="tierEd" class="sheet" aria-labelledby="tierTitle">
+    <form id="tierForm" class="sheet-in" method="dialog" novalidate>
+      <div class="sheet-top"><button type="button" class="link" id="tierCancel">Cancel</button><h2 id="tierTitle">Edit tier</h2><button type="submit" class="link strong">Save</button></div>
+      <div class="sheet-body">
+        <div class="pair"><label class="fld"><span>Name · EN</span><input name="name.en" type="text" required></label><label class="fld"><span>Name · RU</span><input name="name.ru" type="text" lang="ru"></label></div>
+        <div class="pair"><label class="fld"><span>Short name (on cards) · EN</span><input name="short.en" type="text"></label><label class="fld"><span>· RU</span><input name="short.ru" type="text" lang="ru"></label></div>
+        <div class="pair"><label class="fld"><span>Price line · EN</span><input name="range.en" type="text" placeholder="under $500"></label><label class="fld"><span>· RU</span><input name="range.ru" type="text" lang="ru"></label></div>
+        <label class="fld"><span>One-liner · EN</span><textarea name="blurb.en" rows="2"></textarea></label>
+        <label class="fld"><span>One-liner · RU</span><textarea name="blurb.ru" rows="2" lang="ru"></textarea></label>
+        <div class="pair"><label class="fld"><span>Band from (USD)</span><input name="min" type="text" inputmode="numeric" placeholder="auto"></label><label class="fld"><span>Band to (USD)</span><input name="max" type="text" inputmode="numeric" placeholder="auto"></label></div>
+        <p class="help">The band powers the tier hint: a price outside it makes the item editor offer the right tier. Empty = read from the price line.</p>
+        <p class="err" id="tierErr" role="alert" hidden></p>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="ask" class="sheet mini" aria-labelledby="askTitle">
+    <div class="ask-in"><h2 id="askTitle"></h2><p id="askText"></p><div class="ask-btns" id="askBtns"></div></div>
   </dialog>
 
   <div class="toast" id="toast" role="status" hidden><span class="t-dot"></span><span id="toastMsg"></span></div>
