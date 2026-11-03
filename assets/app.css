@@ -136,7 +136,8 @@ h1 i { font-style: italic; color: #8a6d3b; }
 .card .face:focus { outline: none; }
 /* pointer/tilt let go: settle back with a spring */
 .card.release { transition: transform .8s var(--spring), --mx .8s var(--spring), --my .8s var(--spring), --px .8s var(--spring), --py .8s var(--spring), --d .8s var(--spring); }
-.card.anim { transition: transform .8s cubic-bezier(.3,.7,.2,1), --mx .12s linear, --my .12s linear, --px .12s linear, --py .12s linear, --d .12s linear; }
+/* the flip: a quick turn that overshoots a few degrees and settles, like a card flicked over on a wire (≈ 0.2 s turn, 0.4 s settle) */
+.card.anim { transition: transform .6s var(--spring), --mx .12s linear, --my .12s linear, --px .12s linear, --py .12s linear, --d .12s linear; }
 .card.flipped { --f: 180deg; }
 .front:focus-visible, .back:focus-visible { box-shadow: 0 0 0 3px #8fb08a, 0 18px 30px -16px rgba(40,30,10,.45); }
 .back .hint:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }

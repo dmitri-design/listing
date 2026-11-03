@@ -388,7 +388,8 @@ function flip(card, quiet) {
     if (activeCard === card) { activeCard = document.querySelector('.card.flipped'); if (activeCard) activeCard.classList.add('active'); }
     if (!activeCard) stopTilt();
   }
-  clearTimeout(card._t); card._t = setTimeout(() => card.classList.remove('anim'), 850);
+  const row = SW.rows.find(x => x.el.contains(card)); if (row) kick(row, flipped ? 12 : -12);   /* the flick also rocks the card on its pin */
+  clearTimeout(card._t); card._t = setTimeout(() => card.classList.remove('anim'), 650);
 }
 
 /* ---------- holo: light follows the pointer (desktop) or the phone's tilt; springs back when let go ---------- */
