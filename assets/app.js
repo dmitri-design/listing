@@ -680,34 +680,20 @@ function fetchLive(api, slug) {
   return fetch(`${api}/api/lists/${encodeURIComponent(slug)}`, { cache: 'no-store' })
     .then(r => r.ok ? r.json() : null).then(d => okShape(d) ? d : null).catch(() => null);
 }
-/* ---------- the wall: pattern, photo or ambient scene behind everything, one per theme (set in admin → Look) ---------- */
-let sceneLoaded = null, bgSeq = 0;   // one live scene per page load; a second one shows as its still
-const LOADING = {};
-const addScript = (src) => LOADING[src] || (LOADING[src] = new Promise((ok, bad) => { const sc = document.createElement('script'); sc.src = src; sc.onload = () => ok(); sc.onerror = () => { delete LOADING[src]; bad(new Error(src)); }; document.head.appendChild(sc); }));
-function stopScenes() { const S = window.Scenes; if (S) Object.values(S).forEach(s => s && s.stop && s.stop()); }
-async function loadScene(id, host, seq) {
-  host.innerHTML = '<div class="bg-scene"></div>';
-  const still = () => { host.style.backgroundImage = `url("img/scenes/${id}.webp")`; };
-  if (sceneLoaded && sceneLoaded !== id) return still();
-  try { await addScript('assets/scenes/lib.js'); await addScript(`assets/scenes/${id}.js`); } catch (e) { if (seq === bgSeq) still(); return; }
-  if (seq !== bgSeq) return;   // the wall changed while the script was loading
-  const s = window.Scenes && window.Scenes[id];
-  if (s) { sceneLoaded = id; s.start(); } else still();
-}
+/* ---------- the wall: pattern, tile, photo or ambient scene behind everything, one per theme (set in admin → Look) ---------- */
 function renderBg() {
-  const seq = ++bgSeq;
   const dark = document.documentElement.classList.contains('dark');
   const all = DATA && DATA.site && DATA.site.bg, cfg = all && all[dark ? 'dark' : 'light'];
   let el = document.getElementById('bg');
   if (!el) { el = document.createElement('div'); el.id = 'bg'; el.className = 'bg'; el.setAttribute('aria-hidden', 'true'); document.body.insertBefore(el, document.body.firstChild); }
-  stopScenes();
-  const kind = window.Wall ? Wall.render(el, cfg) : 'none';   // patterns, tiles, photos and a scene's still
+  if (!window.Wall) return;
+  const kind = Wall.render(el, cfg);   // patterns, tiles, photos and a scene's still (also stops any moving scene)
   if (kind !== 'scene') return;
   const phone = !finePointer.matches;
   const live = !reduced.matches && !(navigator.connection && navigator.connection.saveData) && (!phone || !!cfg.phone);   // phones only when the owner switched it on
   if (!live) return;
   window.SceneScale = phone ? .5 : 1;   // half-resolution canvas on phones, stretched by CSS
-  el.style.backgroundImage = ''; loadScene(cfg.id, el, seq);
+  Wall.live(el, cfg.id);
 }
 window.addEventListener('themechange', () => { if (DATA) renderBg(); });
 

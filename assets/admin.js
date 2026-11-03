@@ -345,7 +345,9 @@
     if (side && window.Theme && (side === 'dark') !== isDark()) Theme.set(side === 'dark', false);
     const s = side || (isDark() ? 'dark' : 'light');
     if (!bgEl) { bgEl = document.createElement('div'); bgEl.id = 'bg'; bgEl.className = 'bg'; bgEl.setAttribute('aria-hidden', 'true'); document.body.insertBefore(bgEl, document.body.firstChild); }
-    Wall.render(bgEl, cfg || (DOC && DOC.site && DOC.site.bg && DOC.site.bg[s]) || null, { ink: ROOM[s].ink });
+    const c = cfg || (DOC && DOC.site && DOC.site.bg && DOC.site.bg[s]) || null;
+    const kind = Wall.render(bgEl, c, { ink: ROOM[s].ink });
+    if (kind === 'scene') { window.SceneScale = matchMedia('(hover: hover) and (pointer: fine)').matches ? 1 : .5; Wall.live(bgEl, c.id); }   // the owner sees it move right here
   }
   window.addEventListener('themechange', () => {   // after the (animated) theme switch: keep the live pick while editing, else the saved wall
     if (!DOC) return; const side = isDark() ? 'dark' : 'light';
@@ -390,7 +392,7 @@
   /* the strip under the slider shows the wall at the real page strength, with a little paper card on it */
   function preview(side) {
     const cfg = LOOK[side], room = ROOM[side], el = $(`#prev-${side}`);
-    el.style.background = room.wall; el.innerHTML = '<div class="prev-art"></div><span class="prev-card"></span>';
+    el.style.background = room.wall; el.innerHTML = '<div class="prev-art"></div>';
     if (window.Wall) Wall.render(el.firstChild, cfg, { cls: 'prev-art', ink: room.ink });
   }
   $('#view-look').addEventListener('click', (e) => {
