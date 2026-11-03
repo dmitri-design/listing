@@ -14,6 +14,7 @@
     root.classList.toggle('dark', dark);
     if (meta) meta.setAttribute('content', dark ? DARK : LIGHT);
     buttons().forEach(b => b.setAttribute('aria-pressed', dark ? 'true' : 'false'));   // one model: a toggle button "Dark theme", pressed or not
+    window.dispatchEvent(new CustomEvent('themechange', { detail: { dark } }));   // the page swaps its wall on this
   }
   function set(dark, save) {
     if (save) { try { localStorage.setItem(KEY, dark ? 'dark' : 'light'); } catch (e) {} }

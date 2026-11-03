@@ -128,9 +128,10 @@ async function putImage(req, env, list, id, cors) {
 async function deleteImage(req, env, list, id, cors) {
   const auth = await adminOk(req, env); if (auth !== true) return auth(cors);
   const row = await env.DB.prepare('SELECT doc FROM lists WHERE slug = ?1').bind(list).first();
-  const items = row ? JSON.parse(row.doc).items : null;
+  const doc = row ? JSON.parse(row.doc) : null, items = doc ? doc.items : null;
   const key = (u) => (String(u).match(/\/images\/([a-z0-9-]+)(?:[?#]|$)/) || [])[1];
-  if (Array.isArray(items) && items.some(it => it && typeof it.image === 'string' && key(it.image) === id)) return out({ error: 'in_use' }, 409, cors);
+  const walls = ['light', 'dark'].map(s => doc && doc.site && doc.site.bg && doc.site.bg[s] && doc.site.bg[s].src);   // the wall photos count as in use too
+  if ((Array.isArray(items) && items.some(it => it && typeof it.image === 'string' && key(it.image) === id)) || walls.some(u => typeof u === 'string' && key(u) === id)) return out({ error: 'in_use' }, 409, cors);
   await env.DB.prepare('DELETE FROM images WHERE list = ?1 AND id = ?2').bind(list, id).run();
   return new Response(null, { status: 204, headers: { ...cors, 'Cache-Control': 'no-store' } });
 }

@@ -52,6 +52,7 @@
       <button type="button" role="tab" data-view="items" aria-selected="true">Items</button>
       <button type="button" role="tab" data-view="bookings" aria-selected="false">Bookings <b id="bkCount" hidden></b></button>
       <button type="button" role="tab" data-view="texts" aria-selected="false">Texts</button>
+      <button type="button" role="tab" data-view="look" aria-selected="false">Look</button>
     </nav>
 
     <section id="view-items" class="view" role="tabpanel"></section>
@@ -78,6 +79,31 @@
         </details>
         <div class="actions"><button type="submit" class="btn primary">Save texts</button></div>
       </form>
+    </section>
+
+    <section id="view-look" class="view" role="tabpanel" hidden>
+      <p class="help">The wall behind the cards: one for the light room, one for the dark. Patterns take a colour and a strength. Guests see it right after Save look.</p>
+      <h3 class="lookh"><span class="lookdot" style="--c:#f4efe4"></span>Light room</h3>
+      <div class="tiles" id="tiles-light"></div>
+      <div class="lookopts" id="lookopts-light" hidden>
+        <div class="strength"><span class="fld-l">Strength</span>
+          <div class="strow"><small>Faint</small><input type="range" id="str-light" min="2" max="60" step="1" aria-label="Strength"><small>Bold</small><output id="out-light" for="str-light"></output></div>
+          <div class="wallprev" id="prev-light" aria-hidden="true"></div></div>
+        <div class="swrow" id="swrow-light"><span>Colour</span><div class="swatches" id="sw-light"></div></div>
+        <button type="button" class="btn ghost sm" id="replace-light" data-replace="light" hidden>Replace photo…</button>
+      </div>
+      <input type="file" id="bgIn-light" accept="image/*" hidden>
+      <h3 class="lookh"><span class="lookdot" style="--c:#15120e"></span>Dark room</h3>
+      <div class="tiles" id="tiles-dark"></div>
+      <div class="lookopts" id="lookopts-dark" hidden>
+        <div class="strength"><span class="fld-l">Strength</span>
+          <div class="strow"><small>Faint</small><input type="range" id="str-dark" min="2" max="70" step="1" aria-label="Strength"><small>Bold</small><output id="out-dark" for="str-dark"></output></div>
+          <div class="wallprev" id="prev-dark" aria-hidden="true"></div></div>
+        <div class="swrow" id="swrow-dark"><span>Colour</span><div class="swatches" id="sw-dark"></div></div>
+        <button type="button" class="btn ghost sm" id="replace-dark" data-replace="dark" hidden>Replace photo…</button>
+      </div>
+      <input type="file" id="bgIn-dark" accept="image/*" hidden>
+      <div class="actions sticky" id="lookActions" hidden><button type="button" class="btn primary" id="lookSave">Save look</button></div>
     </section>
 
     <footer class="tools">
@@ -149,6 +175,7 @@
 </div>
 <script src="assets/sounds.js" defer></script>
 <script src="assets/theme.js" defer></script>
+<script src="assets/patterns.js" defer></script>
 <script src="assets/admin.js" defer></script>
 </body>
 </html>

@@ -86,8 +86,8 @@
     $('#seedBtn').disabled = false;
     if (ok) { show('app'); renderAll(); loadBookings(); } else enter();   // re-check: seeded meanwhile (409), password, connection
   });
-  $('#logoutBtn').addEventListener('click', () => { forget(); DOC = null; $('#tokenIn').value = ''; $('#loginErr').hidden = true; show('login'); });
-  $('#reloadBtn').addEventListener('click', () => enter());
+  $('#logoutBtn').addEventListener('click', async () => { if (!await guardLook()) return; forget(); DOC = null; $('#tokenIn').value = ''; $('#loginErr').hidden = true; show('login'); });
+  $('#reloadBtn').addEventListener('click', async () => { if (await guardLook()) enter(); });
   $('#exportBtn').addEventListener('click', () => {
     const blob = new Blob([JSON.stringify(DOC, null, 2) + '\n'], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'items.json'; a.click();
@@ -111,17 +111,21 @@
   const giveUp = (ms) => (AbortSignal.timeout ? AbortSignal.timeout(ms) : undefined);
   /* Photos uploaded to the Worker: once a save lands, the ones the list no longer points at go (replaced, removed, item deleted). */
   const imgBase = () => `${API}/api/lists/${LIST}/images/`;
-  const imgKeys = (d) => new Set(((d && d.items) || []).map(i => typeof i.image === 'string' && i.image.startsWith(imgBase()) ? i.image.slice(imgBase().length).split(/[?#]/)[0] : '').filter(k => /^[a-z0-9-]{1,40}$/.test(k)));
+  const imgKey = (u) => typeof u === 'string' && u.startsWith(imgBase()) ? u.slice(imgBase().length).split(/[?#]/)[0] : '';
+  /* every Worker photo the list points at: item photos and the two walls */
+  const imgKeys = (d) => new Set([...((d && d.items) || []).map(i => imgKey(i.image)), ...['light', 'dark'].map(s => imgKey(d && d.site && d.site.bg && d.site.bg[s] && d.site.bg[s].src))].filter(k => /^[a-z0-9-]{1,40}$/.test(k)));
   function dropImages(was) { const now = imgKeys(DOC); for (const k of was) if (!now.has(k)) fetch(imgBase() + k, { method: 'DELETE', headers: authHeaders() }).catch(() => {}); }
 
   /* ---------- views ---------- */
-  $$('.seg [role="tab"]').forEach(b => b.addEventListener('click', () => {
+  $$('.seg [role="tab"]').forEach(b => b.addEventListener('click', async () => {
+    const cur = $('.seg [role="tab"][aria-selected="true"]');
+    if (cur && cur.dataset.view === 'look' && b.dataset.view !== 'look' && !await guardLook()) return;
     $$('.seg [role="tab"]').forEach(x => x.setAttribute('aria-selected', x === b ? 'true' : 'false'));
     $$('.view').forEach(v => { v.hidden = v.id !== 'view-' + b.dataset.view; });
     $('#fab').hidden = b.dataset.view !== 'items';
     snd('toggle.on');
   }));
-  function renderAll(prev) { renderItems(); renderTexts(prev); }
+  function renderAll(prev) { renderItems(); renderTexts(prev); renderLook(); }
   const tierOf = (id) => DOC.tiers.find(t => t.id === id) || DOC.tiers[0];
   const sorted = () => DOC.items.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
   function thumb(it) {
@@ -325,6 +329,108 @@
     if (await save(doc, 'Texts saved')) renderTexts(doc);   // saved fields show trimmed; typing since the tap stays
   });
 
+  /* ---------- look: the wall behind the cards, one per room (theme) ---------- */
+  const SCENES = [{ id: 'aurora', name: 'Aurora' }, { id: 'swirl', name: 'Swirl' }, { id: 'shift', name: 'Shift' }, { id: 'coalesce', name: 'Coalesce' }, { id: 'pipeline', name: 'Pipeline' }];
+  const SWATCHES = [{ id: 'ink', c: '' }, { id: 'gold', c: '#8a6d3b' }, { id: 'green', c: '#8fb08a' }, { id: 'coral', c: '#d99d85' }, { id: 'blue', c: '#7f9bb8' }];
+  const ROOM = { light: { wall: '#f4efe4', ink: '#221d17' }, dark: { wall: '#15120e', ink: '#f1e9da' } };
+  const HEX = /^#[0-9a-f]{3,8}$/i, MAXS = { pattern: 60, photo: 70, scene: 70 };   // photos and scenes never go full strength: the hero text sits on them
+  const lookDefaults = (side) => ({ kind: 'none', id: '', color: '', strength: 14, scale: 1, src: '' });
+  let LOOK = null, lookDirty = false;
+  const lookFrom = (doc) => { const bg = (doc.site && doc.site.bg) || {}; return { light: Object.assign(lookDefaults('light'), bg.light || {}), dark: Object.assign(lookDefaults('dark'), bg.dark || {}) }; };
+  function renderLook() {
+    if (!lookDirty || !LOOK) LOOK = lookFrom(DOC);   // unsaved picks survive a Reload and other tabs' saves
+    renderSide('light'); renderSide('dark'); markLook();
+  }
+  function markLook() { $('#lookActions').hidden = !lookDirty; }
+  function touchLook(side) { lookDirty = true; renderSide(side); markLook(); }
+  const tint = (cfg, room) => HEX.test(cfg.color || '') ? cfg.color : room.ink;
+  function renderSide(side) {
+    const cfg = LOOK[side], room = ROOM[side], Pt = window.Patterns, color = tint(cfg, room), op = Math.min(1, cfg.strength / 100 * 3);
+    const on = (kind, id) => cfg.kind === kind && (cfg.id || '') === (id || '');
+    const tile = (kind, id, label, inner) => `<button type="button" class="tile${on(kind, id) ? ' on' : ''}" data-side="${side}" data-kind="${kind}" data-id="${esc(id || '')}" style="--wall:${room.wall};--rink:${room.ink}" aria-pressed="${on(kind, id)}"><span class="tile-art">${inner}</span><span class="tile-lbl">${esc(label)}</span></button>`;
+    const head = (t) => `<h4 class="tilesh">${t}</h4>`;
+    const pat = (p) => tile('pattern', p.id, p.name.en, `<span class="tile-pat" style="opacity:${p.fixed ? Math.min(1, op * 1.6) : op}">${Pt.svg(p.id, { color: p.fixed ? 'currentColor' : color, scale: .8 })}</span>`);
+    const pats = Pt ? Pt.list : [];
+    const camera = '<span class="ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.6"/></svg></span>';
+    const html = [tile('none', '', 'Plain wall', ''), head('Patterns'), ...pats.filter(p => !p.holiday).map(pat), head('Holiday'), ...pats.filter(p => p.holiday).map(pat)]
+      .concat(side === 'dark' ? [head('Scenes · move on a computer, a still on phones'), ...SCENES.map(s => tile('scene', s.id, s.name, `<img src="img/scenes/${s.id}.webp" alt="" loading="lazy">`))] : [])
+      .concat([head('Your photo'), tile('photo', '', cfg.src ? 'Your photo' : 'Add a photo…', cfg.src ? `<img src="${esc(cfg.src)}" alt="">` : camera)]);
+    $(`#tiles-${side}`).innerHTML = html.join('');
+    $(`#lookopts-${side}`).hidden = cfg.kind === 'none';
+    const range = $(`#str-${side}`); range.max = MAXS[cfg.kind] || 60; if (cfg.strength > +range.max) cfg.strength = +range.max; range.value = cfg.strength; $(`#out-${side}`).value = cfg.strength;
+    const p = Pt && cfg.kind === 'pattern' ? Pt.byId(cfg.id) : null;
+    $(`#swrow-${side}`).hidden = !(p && !p.fixed);
+    $(`#replace-${side}`).hidden = cfg.kind !== 'photo';
+    preview(side);
+    const custom = /^#[0-9a-f]{6}$/i.test(cfg.color || '') && !SWATCHES.some(s => s.c.toLowerCase() === cfg.color.toLowerCase());
+    $(`#sw-${side}`).innerHTML = SWATCHES.map(s => { const sel = (cfg.color || '').toLowerCase() === s.c.toLowerCase(); return `<button type="button" class="sw${sel ? ' on' : ''}" data-side="${side}" data-c="${s.c}" style="--c:${s.c || room.ink}" aria-label="${s.id}" aria-pressed="${sel}"></button>`; }).join('')
+      + `<label class="sw custom${custom ? ' on' : ''}" style="--c:${custom ? cfg.color : room.ink}" title="Any colour"><input type="color" data-side="${side}" value="${custom ? cfg.color : room.ink}" aria-label="Custom colour"></label>`;
+  }
+  /* the strip under the slider shows the wall at the real page strength, with a little paper card on it */
+  function preview(side) {
+    const cfg = LOOK[side], room = ROOM[side], Pt = window.Patterns, el = $(`#prev-${side}`), op = Math.min(1, cfg.strength / 100);
+    el.style.background = room.wall; el.style.color = tint(cfg, room);
+    let art = '';
+    if (cfg.kind === 'pattern' && Pt && Pt.byId(cfg.id)) art = `<span class="tile-pat" style="opacity:${op}">${Pt.svg(cfg.id, { color: Pt.byId(cfg.id).fixed ? 'currentColor' : tint(cfg, room), scale: cfg.scale || 1 })}</span>`;
+    else if (cfg.kind === 'photo' && cfg.src) art = `<img src="${esc(cfg.src)}" alt="" style="opacity:${op}">`;
+    else if (cfg.kind === 'scene' && SCENES.some(s => s.id === cfg.id)) art = `<img src="img/scenes/${esc(cfg.id)}.webp" alt="" style="opacity:${op}">`;
+    el.innerHTML = art + '<span class="prev-card"></span>';
+  }
+  $('#view-look').addEventListener('click', (e) => {
+    const t = e.target.closest('.tile'), sw = e.target.closest('.sw:not(.custom)'), rp = e.target.closest('[data-replace]');
+    if (rp) { $(`#bgIn-${rp.dataset.replace}`).click(); return; }
+    if (sw) { LOOK[sw.dataset.side].color = sw.dataset.c; touchLook(sw.dataset.side); snd('toggle.on'); return; }
+    if (!t) return;
+    const side = t.dataset.side, cfg = LOOK[side], kind = t.dataset.kind, id = t.dataset.id;
+    if (kind === 'photo' && !cfg.src) { $(`#bgIn-${side}`).click(); return; }   // no photo yet: pick one
+    if (kind === cfg.kind && id === (cfg.id || '')) return;
+    if (kind === 'pattern' && cfg.kind !== 'pattern') cfg.strength = lookDefaults(side).strength;   // each kind has its own sensible strength
+    if (kind === 'scene') cfg.strength = MAXS.scene;
+    if (kind === 'photo' && cfg.kind !== 'photo') cfg.strength = Math.max(Math.min(cfg.strength, MAXS.photo), 35);
+    cfg.kind = kind; cfg.id = id; touchLook(side); snd('toggle.on');
+  });
+  $('#view-look').addEventListener('input', (e) => {
+    const side = e.target.dataset.side || (e.target.id || '').replace(/^str-/, ''); if (!LOOK || !LOOK[side]) return;
+    if (e.target.type === 'range') {
+      LOOK[side].strength = +e.target.value; $(`#out-${side}`).value = e.target.value; lookDirty = true; markLook();
+      const op = Math.min(1, LOOK[side].strength / 100 * 3); $$(`#tiles-${side} .tile-pat`).forEach(el => { el.style.opacity = op; }); preview(side);
+    }
+    if (e.target.type === 'color') { if (HEX.test(e.target.value)) LOOK[side].color = e.target.value; lookDirty = true; preview(side); }
+  });
+  $('#view-look').addEventListener('change', (e) => { if (e.target.type === 'color') touchLook(e.target.dataset.side); });
+  for (const side of ['light', 'dark']) $(`#bgIn-${side}`).addEventListener('change', async (e) => {
+    const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
+    if (saving) { toast('Still saving…'); return; }
+    let pi; try { pi = await shrink(f, 1600); } catch (x) { toast('Could not read that photo', true); snd('state.error'); return; }
+    saving = true; toast('Uploading…');
+    const key = `bg-${side}-${Date.now().toString(36)}`;
+    const r = await fetch(`${API}/api/lists/${LIST}/images/${key}`, { method: 'POST', headers: authHeaders({ 'Content-Type': pi.type }), body: pi.blob, signal: giveUp(60000) }).catch(() => null);
+    const j = r && r.ok ? await r.json().catch(() => null) : null;
+    saving = false;
+    if (!j) { toast(r && r.status === 413 ? 'Photo too big even after shrinking.' : 'Photo upload failed. Check the connection.', true); snd('state.error'); return; }
+    const cfg = LOOK[side], old = cfg.src;
+    cfg.src = j.url; cfg.kind = 'photo'; cfg.id = ''; cfg.strength = Math.max(Math.min(cfg.strength, MAXS.photo), 35);
+    if (old && old !== j.url) dropUpload(old);   // a photo picked earlier and never saved
+    touchLook(side); toast(`Photo ready · ${Math.round(pi.blob.size / 1024)} KB`); snd('toggle.on');
+  });
+  async function saveLook() {
+    const doc = JSON.parse(JSON.stringify(DOC));
+    const clean = (c) => { const o = { kind: c.kind || 'none' }; if (o.kind === 'pattern' || o.kind === 'scene') o.id = c.id; if (o.kind === 'photo') o.src = c.src; if (o.kind !== 'none') { o.strength = Math.min(+c.strength || 10, MAXS[o.kind] || 60); if (HEX.test(c.color || '')) o.color = c.color; if (c.scale && c.scale !== 1) o.scale = c.scale; } return o; };
+    doc.site.bg = { light: clean(LOOK.light), dark: clean(LOOK.dark) };
+    if (!await save(doc, 'Look saved')) return false;   // save() also drops the wall photo this one replaced
+    for (const s of ['light', 'dark']) if (LOOK[s].src && LOOK[s].kind !== 'photo') dropUpload(LOOK[s].src);   // uploaded, then not used
+    lookDirty = false; LOOK = null; renderLook(); return true;
+  }
+  $('#lookSave').addEventListener('click', saveLook);
+  /* leaving the Look tab, Reload or Sign out with unsaved picks asks first; Discard also throws away photos uploaded for them */
+  async function guardLook() {
+    if (!lookDirty) return true;
+    const v = await ask({ title: 'Unsaved look', text: 'Save it, or throw it away?', buttons: [{ label: 'Save look', value: 'save', kind: 'primary' }, { label: 'Discard', value: 'discard', kind: 'ghost danger' }, { label: 'Keep editing', value: 'keep', kind: 'ghost' }] });
+    if (v === 'save') return await saveLook();
+    if (v === 'discard') { for (const s of ['light', 'dark']) if (LOOK[s].src) dropUpload(LOOK[s].src); lookDirty = false; LOOK = null; renderLook(); snd('toggle.off'); return true; }
+    return false;
+  }
+
   /* ---------- editor ---------- */
   const ed = $('#editor'), form = $('#editForm');
   let cur = null, isNew = false, pendingImage = null;   // pendingImage: { blob, type, w, h, url, alpha, src = Worker URL once uploaded }
@@ -413,12 +519,12 @@
   /* resize on the phone so every upload fits the Worker's 600 KB: longest side ≤ 800 px, WebP when the browser can encode it
      (Safari can't), else JPEG; only real transparency stays PNG. Still too big → step the size down until it fits. */
   const UP_MAX = 560 * 1024;
-  async function shrink(file) {
+  async function shrink(file, maxSide) {
     const url = URL.createObjectURL(file);
     const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; }).finally(() => URL.revokeObjectURL(url));
     const c = document.createElement('canvas'), g = c.getContext('2d');
     const draw = (max) => { const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight)); c.width = Math.max(1, Math.round(img.naturalWidth * s)); c.height = Math.max(1, Math.round(img.naturalHeight * s)); g.drawImage(img, 0, 0, c.width, c.height); };
-    draw(800);
+    draw(maxSide || 800);
     const px = g.getImageData(0, 0, c.width, c.height).data;
     let alpha = false; for (let i = 3; i < px.length && !alpha; i += 4) alpha = px[i] < 255;
     let type = 'image/webp', q = .82, blob = await new Promise(res => c.toBlob(res, type, q));

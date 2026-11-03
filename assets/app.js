@@ -672,6 +672,7 @@ function apply(d, quiet) {
   LIST = (DATA.site && DATA.site.slug) || 'dmitri';
   API = String((LOCAL && new URLSearchParams(location.search).get('api')) || DATA.site.api || '').replace(/\/+$/, '');
   renderSite(DATA.site);
+  renderBg();
   renderNav(DATA.tiers);
   layout(true, quiet);
 }
@@ -679,6 +680,45 @@ function fetchLive(api, slug) {
   return fetch(`${api}/api/lists/${encodeURIComponent(slug)}`, { cache: 'no-store' })
     .then(r => r.ok ? r.json() : null).then(d => okShape(d) ? d : null).catch(() => null);
 }
+/* ---------- the wall: pattern, photo or ambient scene behind everything, one per theme (set in admin → Look) ---------- */
+const SCENE_IDS = ['aurora', 'swirl', 'shift', 'coalesce', 'pipeline'];
+let sceneLoaded = null, bgSeq = 0;   // one live scene per page load; a second one shows as its still
+const LOADING = {};
+const addScript = (src) => LOADING[src] || (LOADING[src] = new Promise((ok, bad) => { const sc = document.createElement('script'); sc.src = src; sc.onload = () => ok(); sc.onerror = () => { delete LOADING[src]; bad(new Error(src)); }; document.head.appendChild(sc); }));
+function stopScenes() { const S = window.Scenes; if (S) Object.values(S).forEach(s => s && s.stop && s.stop()); }
+async function loadScene(id, host, seq) {
+  host.innerHTML = '<div class="bg-scene"></div>';
+  const still = () => { host.style.backgroundImage = `url("img/scenes/${id}.webp")`; };
+  if (sceneLoaded && sceneLoaded !== id) return still();
+  try { await addScript('assets/scenes/lib.js'); await addScript(`assets/scenes/${id}.js`); } catch (e) { if (seq === bgSeq) still(); return; }
+  if (seq !== bgSeq) return;   // the wall changed while the script was loading
+  const s = window.Scenes && window.Scenes[id];
+  if (s) { sceneLoaded = id; s.start(); } else still();
+}
+function renderBg() {
+  const seq = ++bgSeq;
+  const dark = document.documentElement.classList.contains('dark');
+  const all = DATA && DATA.site && DATA.site.bg, cfg = all && all[dark ? 'dark' : 'light'];
+  let el = document.getElementById('bg');
+  if (!el) { el = document.createElement('div'); el.id = 'bg'; el.className = 'bg'; el.setAttribute('aria-hidden', 'true'); document.body.insertBefore(el, document.body.firstChild); }
+  stopScenes();
+  el.className = 'bg'; el.innerHTML = ''; el.removeAttribute('style');
+  if (!cfg || !cfg.kind || cfg.kind === 'none') return;
+  const strength = clamp((+cfg.strength || 10) / 100, .02, cfg.kind === 'pattern' ? 1 : .7);   // photos and scenes keep a little wall showing through
+  if (cfg.kind === 'pattern' && window.Patterns && Patterns.byId(cfg.id)) {
+    const color = /^#[0-9a-f]{3,8}$/i.test(cfg.color || '') ? cfg.color : 'var(--ink)';
+    el.classList.add('pattern'); el.style.opacity = strength; el.innerHTML = Patterns.svg(cfg.id, { color, scale: cfg.scale || 1 });
+  } else if (cfg.kind === 'photo' && safeUrl(cfg.src)) {
+    el.classList.add('photo'); el.style.opacity = strength;
+    const img = new Image(); img.onload = () => { if (seq === bgSeq) el.style.backgroundImage = `url("${cfg.src}")`; }; img.src = cfg.src;   // can't load (offline, blocked host): plain wall
+  } else if (cfg.kind === 'scene' && SCENE_IDS.includes(cfg.id)) {
+    el.classList.add('scene'); el.style.opacity = strength;
+    const live = finePointer.matches && !reduced.matches && !(navigator.connection && navigator.connection.saveData);
+    if (live) loadScene(cfg.id, el, seq); else el.style.backgroundImage = `url("img/scenes/${cfg.id}.webp")`;
+  }
+}
+window.addEventListener('themechange', () => { if (DATA) renderBg(); });
+
 async function load() {
   const main = $('#tiers');
   let d = null;
