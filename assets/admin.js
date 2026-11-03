@@ -10,7 +10,14 @@
   const l2Of = (v) => (v && typeof v === 'object' ? v[L2] : '') ?? '';
   const PACKS = ['ru', 'tr', 'uk', 'de', 'fr', 'es', 'it', 'pt', 'pl', 'nl', 'hi', 'zh', 'ja'];   // the page's own words come ready for these
   /* EN + optional RU input → a plain string unless RU differs; an untouched value keeps its exact shape */
-  const bi = (en, alt, old) => old && typeof old === 'object' && old.en === en && (old[L2] ?? '') === alt ? old : alt && alt !== en ? { en, [L2]: alt } : en;
+  /* EN + the second language → a string when nothing else is there, else an object; words in other languages are kept */
+  const bi = (en, alt, old) => {
+    const o = old && typeof old === 'object' ? old : null;
+    if (o && o.en === en && (o[L2] ?? '') === alt) return o;
+    const others = o ? Object.fromEntries(Object.entries(o).filter(([k]) => k !== 'en' && k !== L2)) : {};
+    if (!alt || alt === en) return Object.keys(others).length ? Object.assign(others, { en }) : en;
+    return Object.assign(others, { en, [L2]: alt });
+  };
   const LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
   const snd = (role, voice) => { if (window.Sound) window.Sound.play(role, voice || 'signature'); };
