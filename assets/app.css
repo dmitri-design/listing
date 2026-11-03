@@ -123,7 +123,9 @@ h1 i { font-style: italic; color: #8a6d3b; }
 /* .sway takes the scroll/swipe kick (JS spring); .hang keeps the idle CSS swing, so the two never fight */
 .sway { position: relative; padding-top: 28px; transform-origin: 50% 0; transform: rotate(calc(var(--kick, 0) * var(--amp, 1) * 1deg)); perspective: 1200px; -webkit-perspective: 1200px; }
 .row.swinging .sway { will-change: transform; }
-.clip { position: absolute; top: -14px; left: 50%; width: 28px; height: 56px; transform: translateX(-50%) rotate(var(--tilt, 0deg)); z-index: 3; color: var(--pin, #c9a06b); filter: drop-shadow(0 2px 2px rgba(0,0,0,.18)); }
+/* a card out of view (below the fold, or scrolled away inside its row) stops swinging: nothing to see, nothing to composite */
+.drop.off .hang { animation-play-state: paused; }
+.clip { position: absolute; top: -14px; left: 50%; width: 28px; height: 56px; transform: translateX(-50%) rotate(var(--tilt, 0deg)); z-index: 3; color: var(--pin, #c9a06b); }   /* its shadow is drawn inside the #pin symbol: no filter in the swinging subtree */
 
 .card {
   position: relative; width: var(--cw); height: calc(var(--cw) * 1.42);
@@ -156,9 +158,8 @@ h1 i { font-style: italic; color: #8a6d3b; }
     linear-gradient(166deg, rgba(255,255,255,.62) 0%, rgba(255,255,255,.2) 24%, rgba(255,255,255,0) 42%, rgba(255,255,255,0) 70%, rgba(255,255,255,.09) 100%);
   background-size: 100% 100%, 100% 100%;
 }
-@media (hover: none) {
-  .front::after { background-size: 220% 220%, 100% 100%; animation: frontdrift 11s ease-in-out infinite alternate; }
-}
+/* phones: the gloss holds still. A sliding gloss repainted every card front each frame (WebKit: 15 fps on the 22-card page);
+   the flipped card keeps its own drifting light on the back. */
 .price {
   position: absolute; top: 16px; right: 10px; transform: rotate(6deg); z-index: 2;
   background: #fff7d6; border: 1px solid #e9dca6; color: #5a4a1a; font: 700 13px/1 var(--sans);
@@ -361,7 +362,6 @@ footer .bar { width: 46px; height: 1px; background: var(--line); margin: 0 auto 
 @keyframes sweep { 0% { transform: translateX(-130%); } 24%, 100% { transform: translateX(130%); } }
 @keyframes drift { 0% { --mx: 34%; --my: 30%; --px: -.16; --py: -.2; --d: .35; } 50% { --mx: 62%; --my: 46%; --px: .12; --py: -.04; --d: .2; } 100% { --mx: 46%; --my: 72%; --px: -.04; --py: .22; --d: .4; } }
 @keyframes sheet-in { from { transform: translateY(100%); } }
-@keyframes frontdrift { 0% { background-position: 10% 0%, 0 0; } 50% { background-position: 80% 40%, 0 0; } 100% { background-position: 30% 90%, 0 0; } }
 @keyframes confirm-spin { to { transform: rotate(1turn); } }
 @keyframes confirmation-check-draw { to { stroke-dashoffset: 0; } }
 @keyframes shake { 0%, 100% { transform: translateX(0); } 18% { transform: translateX(-7px); } 38% { transform: translateX(6px); } 58% { transform: translateX(-4px); } 78% { transform: translateX(2px); } }
@@ -371,7 +371,7 @@ footer .bar { width: 46px; height: 1px; background: var(--line); margin: 0 auto 
   :root { --spring: linear(0, 0.075, 0.243, 0.44, 0.625, 0.779, 0.894, 0.973, 1.02, 1.043, 1.05, 1.047, 1.039, 1.029, 1.02, 1.012, 1.006, 1.002, 0.999, 0.998, 0.998, 0.998, 0.998, 0.998, 1); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .hang, .row.in .drop, h1 .ch, .tag, .swash, .tiernav, .legend, .card.flipped, .fx .sweep, .tilt-hint, .toast, .front::after, .confirm-stage.shaking { animation: none !important; }
+  .hang, .row.in .drop, h1 .ch, .tag, .swash, .tiernav, .legend, .card.flipped, .fx .sweep, .tilt-hint, .toast, .confirm-stage.shaking { animation: none !important; }
   .confirmation-success { clip-path: none; transition: opacity .2s; }
   .confirm-stage.is-resolved .confirmation-check path { animation: none; stroke-dashoffset: 0; }
   .row.pre .drop { opacity: 1; }

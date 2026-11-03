@@ -306,10 +306,11 @@ window.addEventListener('resize', reveal, { passive: true });
 let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => layout(false), 180); });
 
 /* ---------- wire: a damped spring per row, kicked by page scroll and by swiping a row ---------- */
-const SW = { rows: [], raf: 0, prev: 0, lastY: window.scrollY, lastT: 0, io: null };
+const SW = { rows: [], raf: 0, prev: 0, lastY: window.scrollY, lastT: 0, io: null, cio: null };
 const K = 60, C = 7, VMAX = 60, AMAX = 5;     // stiffness, damping, max deg/s, max deg
 function bindSway() {
   if (SW.io) SW.io.disconnect();
+  if (SW.cio) SW.cio.disconnect();
   SW.rows = [...document.querySelectorAll('.row')].map(el => {
     const sc = el.parentElement;
     const r = { el, sc, sways: [...el.querySelectorAll('.sway')], a: 0, v: 0, k: '0.00', vis: false, lastX: sc.scrollLeft, lastT: 0 };
@@ -323,6 +324,9 @@ function bindSway() {
   if ('IntersectionObserver' in window) {
     SW.io = new IntersectionObserver(es => es.forEach(e => { const r = SW.rows.find(x => x.el === e.target); if (r) r.vis = e.isIntersecting; }), { rootMargin: '120px 0px' });
     SW.rows.forEach(r => SW.io.observe(r.el));
+    /* per card: out of view (below the fold, or scrolled away inside its row) → .off pauses its idle swing (app.css) */
+    SW.cio = new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('off', !e.isIntersecting)), { rootMargin: '120px 80px' });
+    document.querySelectorAll('.drop').forEach(d => SW.cio.observe(d));
   } else SW.rows.forEach(r => { r.vis = true; });
 }
 function kick(r, dv) {
