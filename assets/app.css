@@ -62,8 +62,8 @@ body::before {
 .brand { font-family: var(--serif); font-style: italic; font-size: 15px; color: var(--muted); letter-spacing: .02em; text-align: left; }
 /* ---------- top controls: sound gate + language switch (Velvet UI "state change" element) ---------- */
 .ctrls { display: flex; align-items: center; gap: 10px; flex: none; }
-/* theme button, after Velvet UI: a 30 px disc with a hairline, moon by day and sun at night; the hit area is 44 pt */
-.theme-toggle { position: relative; width: 30px; height: 30px; flex: none; display: grid; place-items: center; appearance: none; padding: 0; cursor: pointer; border-radius: 999px;
+/* theme button, after Velvet UI: a disc with a hairline, moon by day and sun at night; 32 px like the other controls, 44 pt to tap */
+.theme-toggle { position: relative; width: 32px; height: 32px; flex: none; display: grid; place-items: center; appearance: none; padding: 0; cursor: pointer; border-radius: 999px;
   background: var(--paper); border: .5px solid rgba(0,0,0,.12); color: var(--ink); transition: background .15s cubic-bezier(.4,0,.2,1), transform .12s cubic-bezier(.4,0,.2,1); }
 .theme-toggle::before { content: ""; position: absolute; inset: -7px; border-radius: 50%; }
 .theme-toggle:active { transform: scale(.94); }
@@ -73,9 +73,11 @@ body::before {
 html.dark .theme-toggle { border-color: rgba(255,255,255,.28); }
 html.dark .theme-toggle .moon { display: none; }
 html.dark .theme-toggle .sun { display: block; }
-.sound-gate { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; appearance: none; cursor: pointer;
+/* the three controls share one visual height (32 px, the language track); hit areas are 44 pt through ::before */
+.sound-gate { position: relative; display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; appearance: none; cursor: pointer;
   background: var(--paper); border: 1px solid var(--line); border-radius: 999px; box-shadow: 0 1px 2px rgba(20,20,22,.05); color: var(--muted);
   font: 600 12px/1 var(--sans); letter-spacing: .02em; white-space: nowrap; transition: background .15s, transform .12s; }
+.sound-gate::before { content: ""; position: absolute; inset: -7px 0; }
 .sound-gate:active { transform: scale(.975); }
 .gate-dot { width: 7px; height: 7px; flex: none; border-radius: 50%; background: #b9b2a4; transition: background .2s, box-shadow .2s; }
 .sound-gate[aria-pressed="true"] .gate-dot { background: #2f9e63; box-shadow: 0 0 0 3px rgba(47,158,99,.16); }
