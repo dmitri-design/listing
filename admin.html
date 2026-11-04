@@ -96,7 +96,7 @@
           <div class="addrow"><select id="marketAdd" aria-label="Country to add"></select><button type="button" class="btn ghost sm" id="marketAddBtn">＋ Add</button></div>
           <p class="help">Up to six fit on a card. Country names come from the phone itself, in both languages.</p>
         </div>
-        <div class="actions"><button type="submit" class="btn primary">Save setup</button></div>
+        <div class="actions sticky" id="setupActions" hidden><button type="submit" class="btn primary">Save setup</button></div>
       </form>
     </section>
 
@@ -169,8 +169,16 @@
         <div class="fld"><span>Status</span><div class="segsm" id="statusSeg"><button type="button" data-v="wanted">Wanted</button><button type="button" data-v="got">Got it ✓</button><button type="button" data-v="dropped">Hidden</button></div></div>
         <div class="fld danger-zone" id="deleteFld"><button type="button" class="btn ghost danger" id="deleteBtn">Delete item</button></div>
         <p class="err" id="edErr" role="alert" hidden></p>
+        <div class="edprev"><button type="button" class="btn" id="edPreview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>Preview card</button></div>
       </div>
     </form>
+  </dialog>
+
+  <dialog id="preview" class="sheet preview" aria-label="Card preview">
+    <div class="sheet-in">
+      <div class="sheet-top"><button type="button" class="link" id="prevClose">Close</button><h2>Preview</h2><div class="segsm prevlang" id="prevLang"><button type="button" data-v="en" class="on">EN</button><button type="button" data-v="alt" data-l2>RU</button></div></div>
+      <iframe id="prevFrame" title="Card preview"></iframe>
+    </div>
   </dialog>
 
   <dialog id="tierEd" class="sheet" aria-labelledby="tierTitle">

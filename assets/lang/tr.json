@@ -33,5 +33,7 @@
  "bookedDone": "Rezerve edildi",
  "bookedTaken": "Zaten rezerve",
  "gotNote": "Baktığın için çok teşekkürler! Bunu zaten aldım, yakında listeden kalkacak.",
- "unbooking": "Geri alınıyor…"
+ "unbooking": "Geri alınıyor…",
+ "zoom": "Fotoğrafı büyüt",
+ "close": "Kapat"
 }

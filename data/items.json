@@ -259,6 +259,14 @@
     "unbooking": {
       "en": "Undoing…",
       "ru": "Отменяю…"
+    },
+    "zoom": {
+      "en": "See the photo",
+      "ru": "Посмотреть фото"
+    },
+    "close": {
+      "en": "Close",
+      "ru": "Закрыть"
     }
   },
   "items": [

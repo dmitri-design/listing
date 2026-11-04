@@ -33,5 +33,7 @@
  "bookedDone": "Gereserveerd",
  "bookedTaken": "Al gereserveerd",
  "gotNote": "Bedankt voor het kijken! Deze heb ik al, hij verdwijnt binnenkort van de lijst.",
- "unbooking": "Ongedaan maken…"
+ "unbooking": "Ongedaan maken…",
+ "zoom": "Foto vergroten",
+ "close": "Sluiten"
 }

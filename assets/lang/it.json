@@ -33,5 +33,7 @@
  "bookedDone": "Prenotato",
  "bookedTaken": "Già prenotato",
  "gotNote": "Grazie di essere qui! Questo ce l’ho già, sparirà presto dalla lista.",
- "unbooking": "Ritiro…"
+ "unbooking": "Ritiro…",
+ "zoom": "Ingrandisci la foto",
+ "close": "Chiudi"
 }

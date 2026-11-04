@@ -33,5 +33,7 @@
  "bookedDone": "Reserviert",
  "bookedTaken": "Schon reserviert",
  "gotNote": "Danke fürs Reinschauen! Das hab ich schon, es verschwindet bald von der Liste.",
- "unbooking": "Wird zurückgenommen…"
+ "unbooking": "Wird zurückgenommen…",
+ "zoom": "Foto vergrößern",
+ "close": "Schließen"
 }

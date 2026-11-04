@@ -191,8 +191,8 @@ h1 i { font-style: italic; color: var(--gold); }
 }
 .price::before { content: ""; position: absolute; left: 6px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--paper); box-shadow: inset 0 0 0 1px #d8c98e; }
 .imgbox { height: 44%; margin: 10px 0 6px; display: flex; align-items: center; justify-content: center; position: relative; }
-.imgbox img, .imgbox svg { max-width: 92%; max-height: 100%; width: auto; height: auto; filter: drop-shadow(0 10px 10px rgba(40,30,10,.22)); }
-.imgbox.photo img { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: cover; border-radius: 12px; filter: none; box-shadow: 0 10px 18px -10px rgba(40,30,10,.5); }
+.imgbox > img, .imgbox > svg { max-width: 92%; max-height: 100%; width: auto; height: auto; filter: drop-shadow(0 10px 10px rgba(40,30,10,.22)); }
+.imgbox.photo > img { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: cover; border-radius: 12px; filter: none; box-shadow: 0 10px 18px -10px rgba(40,30,10,.5); }
 .imgbox .sketch { position: absolute; left: 50%; bottom: -4px; transform: translateX(-50%); font-size: 11px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; background: var(--paper); padding: 2px 6px; border-radius: 999px; border: 1px dashed var(--line); }
 .name { font-family: var(--serif); font-size: 16.5px; line-height: 1.2; margin: 4px 0 4px; letter-spacing: -.005em; overflow-wrap: anywhere; hyphens: auto; }
 .desc { color: var(--muted); font-size: 12.5px; line-height: 1.42; margin: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
@@ -269,7 +269,7 @@ h1 i { font-style: italic; color: var(--gold); }
 .bfoot { display: grid; grid-template-columns: minmax(0, 1fr) 40px; align-items: center; gap: 8px; }
 
 /* ---------- got it: card stays, crossed out by hand ---------- */
-.card.got .imgbox img, .card.got .imgbox svg { filter: grayscale(.85) contrast(.92); opacity: .7; }
+.card.got .imgbox > img, .card.got .imgbox > svg { filter: grayscale(.85) contrast(.92); opacity: .7; }
 .card.got .name { color: var(--muted); text-decoration: line-through; text-decoration-thickness: .12em; text-decoration-color: var(--ink-red); text-decoration-skip-ink: none; }
 .card.got .price { opacity: .55; }
 .cross { position: absolute; left: 8%; top: 9%; width: 84%; height: 78%; z-index: 3; pointer-events: none; overflow: visible; }
@@ -299,7 +299,7 @@ h1 i { font-style: italic; color: var(--gold); }
 .ribbon { position: absolute; z-index: 6; top: 26px; left: -46px; width: 176px; transform: rotate(-45deg); text-align: center; pointer-events: none;
   background: var(--ink); color: var(--cream); font: 700 11px/1 var(--sans); letter-spacing: .2em; text-transform: uppercase; padding: 8px 0 7px;
   box-shadow: 0 2px 6px rgba(0,0,0,.28); }
-.card.booked .imgbox img, .card.booked .imgbox svg { filter: saturate(.55) brightness(1.04); opacity: .85; }
+.card.booked .imgbox > img, .card.booked .imgbox > svg { filter: saturate(.55) brightness(1.04); opacity: .85; }
 
 /* ---------- one-time offer to turn on tilt (iPhone asks for motion access; only after a tap here) ---------- */
 .toast { position: fixed; z-index: 50; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); transform: translateX(-50%);
@@ -331,7 +331,7 @@ h1 i { font-style: italic; color: var(--gold); }
   box-shadow: 0 -12px 40px rgba(40,30,10,.25); transition: transform .25s ease-out; }
 .sheet[open] { animation: sheet-in .42s var(--spring); }
 .sheet { overscroll-behavior: contain; }
-html:has(dialog.sheet[open]) { overflow: hidden; }   /* the page stays put under the booking sheet */
+html:has(dialog.sheet[open]), html:has(dialog.zoom-d[open]) { overflow: hidden; }   /* the page stays put under the booking sheet */
 .sheet::backdrop { background: rgba(34,29,23,.4); }
 .sheet-in { display: grid; gap: 12px; padding: 8px 18px calc(18px + env(safe-area-inset-bottom)); }
 .sheet-grab { touch-action: none; }
@@ -440,3 +440,36 @@ html.dark .sheet-cancel { color: #d9b26a; }
   .tier-head .blurb { margin-left: 0; }
 }
 @media (hover: hover) { .card:hover .front { --sh: 1; } }
+
+/* ---------- the photo, big: a corner button on the front, the thumb on the back ---------- */
+.zoom { position: absolute; right: -8px; bottom: -6px; z-index: 3; width: 44px; height: 44px; display: grid; place-items: center; appearance: none; border: 0; background: none; padding: 0; margin: 0; cursor: pointer; color: var(--ink); }
+.zoom::before { content: ""; position: absolute; width: 30px; height: 30px; border-radius: 50%; background: rgba(255,253,248,.9); border: 1px solid rgba(255,255,255,.95); box-shadow: 0 2px 8px rgba(40,30,10,.2), inset 0 1px 0 #fff; transition: transform .15s; }
+.zoom svg { position: relative; width: 14px; height: 14px; }
+.zoom:active::before { transform: scale(.9); }
+.zoom:focus-visible { outline: none; } .zoom:focus-visible::before { box-shadow: 0 0 0 3px #8fb08a; }
+.imgbox.photo .zoom { right: 0; bottom: 0; }
+button.thumb { appearance: none; padding: 0; margin: 0; cursor: pointer; font: inherit; color: inherit; }
+button.thumb:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.zoom-d { position: fixed; inset: 0; border: 0; padding: 0; margin: 0; width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; background: transparent; color: #fff; overscroll-behavior: contain; }
+.zoom-d::backdrop { background: rgba(24,19,12,.62); backdrop-filter: blur(18px) saturate(1.1); -webkit-backdrop-filter: blur(18px) saturate(1.1); }
+.zoom-in { margin: 0; height: 100%; display: grid; grid-template-rows: auto auto; align-content: center; justify-items: center; gap: 16px; padding: calc(64px + env(safe-area-inset-top)) 20px calc(36px + env(safe-area-inset-bottom)); touch-action: none; transition: transform .45s var(--spring), opacity .3s; }
+.zoom-img { min-height: 0; display: flex; align-items: center; justify-content: center; }
+.zoom-img img { display: block; width: auto; height: auto; max-width: min(100%, calc(100vw - 40px)); max-height: calc(100dvh - 128px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); object-fit: contain; }
+.zoom-d:not(.photo) .zoom-img { padding: 22px; border-radius: 24px; background: #fffdf8 url(paper.svg); box-shadow: 0 30px 60px -24px rgba(0,0,0,.6), inset 0 1px 0 #fff; }
+.zoom-d:not(.photo) .zoom-img img { max-width: min(100%, calc(100vw - 84px)); max-height: calc(100dvh - 172px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); filter: drop-shadow(0 14px 14px rgba(40,30,10,.25)); }
+.zoom-d.photo .zoom-img img { border-radius: 18px; box-shadow: 0 30px 60px -24px rgba(0,0,0,.7); }
+.zoom-in figcaption { font-family: var(--serif); font-size: 18px; line-height: 1.3; text-align: center; color: rgba(255,255,255,.94); max-width: 560px; overflow-wrap: anywhere; }
+.zoom-x { position: absolute; top: calc(14px + env(safe-area-inset-top)); right: 14px; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.16); color: #fff; font: 500 17px/1 var(--sans); display: grid; place-items: center; cursor: pointer; appearance: none; padding: 0; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.zoom-x:active { transform: scale(.94); }
+.zoom-x:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.zoom-d[open] .zoom-in { animation: zoom-in .4s var(--spring); }
+.zoom-d[open]::backdrop { animation: zoom-fade .3s ease-out; }
+@keyframes zoom-in { from { opacity: 0; transform: scale(.9) translateY(12px); } }
+@keyframes zoom-fade { from { opacity: 0; } }
+html.dark .zoom-d:not(.photo) .zoom-img { background: #2a241d; box-shadow: 0 30px 60px -24px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.08); }
+html.dark .zoom-d::backdrop { background: rgba(0,0,0,.66); }
+/* admin's card preview (index.html?preview=1 in a frame): the wall and the one card, nothing else */
+html.preview .hero, html.preview footer, html.preview .tier-head, html.preview .scroller + .swipe { display: none; }
+html.preview #tiers { min-height: 100dvh; display: grid; align-content: center; padding: 8px 0 32px; }
+html.preview .tier { margin: 0; }
+@media (prefers-reduced-motion: reduce) { .zoom-d[open] .zoom-in, .zoom-d[open]::backdrop { animation: none !important; } .zoom-in { transition: none; } }

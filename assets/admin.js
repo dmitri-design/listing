@@ -99,8 +99,8 @@
     $('#seedBtn').disabled = false;
     if (ok) { show('app'); renderAll(); loadBookings(); } else enter();   // re-check: seeded meanwhile (409), password, connection
   });
-  $('#logoutBtn').addEventListener('click', async () => { if (!await guardLook()) return; forget(); DOC = null; $('#tokenIn').value = ''; $('#loginErr').hidden = true; show('login'); });
-  $('#reloadBtn').addEventListener('click', async () => { if (await guardLook()) enter(); });
+  $('#logoutBtn').addEventListener('click', async () => { if (!await guardLook() || !await guardSetup()) return; forget(); DOC = null; $('#tokenIn').value = ''; $('#loginErr').hidden = true; show('login'); });
+  $('#reloadBtn').addEventListener('click', async () => { if (await guardLook() && await guardSetup()) enter(); });
   $('#exportBtn').addEventListener('click', () => {
     const blob = new Blob([JSON.stringify(DOC, null, 2) + '\n'], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'items.json'; a.click();
@@ -133,6 +133,7 @@
   $$('.seg [role="tab"]').forEach(b => b.addEventListener('click', async () => {
     const cur = $('.seg [role="tab"][aria-selected="true"]');
     if (cur && cur.dataset.view === 'look' && b.dataset.view !== 'look' && !await guardLook()) return;
+    if (cur && cur.dataset.view === 'setup' && b.dataset.view !== 'setup' && !await guardSetup()) return;
     $$('.seg [role="tab"]').forEach(x => x.setAttribute('aria-selected', x === b ? 'true' : 'false'));
     $$('.view').forEach(v => { v.hidden = v.id !== 'view-' + b.dataset.view; });
     $('#fab').hidden = b.dataset.view !== 'items';
@@ -146,7 +147,6 @@
     $$('[data-l2]').forEach(el => { el.textContent = info.label; });
     $$('[data-l2-input]').forEach(el => { el.setAttribute('lang', L2); if (window.Langs && Langs.info(L2).rtl) el.dir = 'rtl'; else el.removeAttribute('dir'); });
     $$('[data-l2-cur]').forEach(el => { el.textContent = DOC.site.currency ? `(${DOC.site.currency})` : ''; });
-    $$('[data-l2-name]').forEach(el => { el.textContent = info.name || info.label; });
   }
   const tierOf = (id) => DOC.tiers.find(t => t.id === id) || DOC.tiers[0];
   const sorted = () => DOC.items.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -260,10 +260,10 @@
   /* closing a sheet that holds unsaved edits asks first: Save / Discard changes / Keep editing (Mail's pattern) */
   async function guardClose(dialog, isDirty, submit) {
     if (!dialog.open) return;
-    if (!isDirty()) { dialog.close(); return; }
+    if (!isDirty()) { dialog._byUs = true; dialog.close(); return; }
     const v = await ask({ title: 'Unsaved changes', text: 'Save them, or throw them away?', buttons: [
       { label: 'Save', value: 'save', kind: 'primary' }, { label: 'Discard changes', value: 'discard', kind: 'ghost danger' }, { label: 'Keep editing', value: 'keep', kind: 'ghost' }] });
-    if (v === 'save') submit(); else if (v === 'discard') { snd('toggle.off'); dialog.close(); }
+    if (v === 'save') submit(); else if (v === 'discard') { snd('toggle.off'); dialog._byUs = true; dialog.close(); }
   }
 
   /* ---------- tier editor (the pencil): names, price line, one-liner, optional USD band ---------- */
@@ -505,9 +505,20 @@
   });
 
   /* ---------- setup: second language, second currency, countries ---------- */
-  let SETUP_MARKETS = null;
+  let SETUP_MARKETS = null, setupBase = '';
+  /* what the Setup form shows, as one string: the sticky Save shows while it differs from the saved list */
+  const setupSnap = () => { const f = $('#setupForm'); return JSON.stringify([f.elements.lang2.value, f.elements.currency.value, String(f.elements.rate.value).trim(), SETUP_MARKETS]); };
+  const setupDirty = () => !!DOC && !!SETUP_MARKETS && setupSnap() !== setupBase;
+  function markSetup() { $('#setupActions').hidden = !setupDirty(); syncXl(); }
+  /* the Translate button names the language picked above at once; a pick not saved yet is saved first when it is tapped */
+  function syncXl() {
+    const to = $('#lang2Sel').value || L2, info = window.Langs ? Langs.info(to) : { name: to.toUpperCase() };
+    $$('[data-l2-name]').forEach(el => { el.textContent = info.name || info.label; });
+    $('#xlHelp').textContent = (to !== L2 ? 'Saves the setup first, then fills' : 'Fills') + " in everything still missing in that language: title, lines, tiers, item names, descriptions, notes, shop labels and the page's own words. Nothing already written is touched. Review the result in Items and Texts.";
+  }
   function renderSetup() {
     if (!window.Langs) return;
+    rateTok++;
     const f = $('#setupForm');
     $('#lang2Sel').innerHTML = Object.entries(Langs.LANGS).map(([c, l]) => `<option value="${c}">${esc(l.name)} · ${esc(l.label)}${PACKS.includes(c) ? ' ✓' : ''}</option>`).join('');
     $('#lang2Sel').value = Langs.LANGS[L2] ? L2 : 'ru';
@@ -516,6 +527,7 @@
     f.elements.rate.value = DOC.site.rate || '';
     SETUP_MARKETS = markets();
     renderMarkets();
+    setupBase = setupSnap(); markSetup();
   }
   function renderMarkets() {
     $('#marketRows').innerHTML = SETUP_MARKETS.map(c => `<div class="mrow"><span>${Langs.flag(c)} ${esc(Langs.regionName(c, 'en'))}</span><button type="button" class="btn ghost sm" data-mx="${c}" aria-label="Remove ${esc(Langs.regionName(c, 'en'))}">✕</button></div>`).join('');
@@ -524,12 +536,17 @@
     $('#marketAddBtn').disabled = SETUP_MARKETS.length >= 6 || !left.length;
   }
   /* today's rate for the chosen currency (typed values always win; a fetch only fills the box) */
+  let rateTok = 0;   // a fetch that lands after the form was reset (Discard, a save) or the currency changed again is dropped
   async function fetchRate(quiet) {
     const f = $('#setupForm'), cur = f.elements.currency.value; if (!cur || !window.Langs) return;
-    const b = $('#rateFetch'); b.disabled = true;
-    try { const r = await Langs.rates(); const v = r.usd[cur.toLowerCase()]; if (!v) throw new Error('no ' + cur); f.elements.rate.value = String(+v.toFixed(v < 2 ? 4 : 2)); $('#rateHelp').textContent = `1 USD = ${f.elements.rate.value} ${cur}, as of ${r.date}. Typed values win; ↻ refreshes.`; if (!quiet) snd('toggle.on'); }
-    catch (e) { if (!quiet) { toast("Couldn't fetch today's rate. Type it in.", true); snd('state.error'); } }
-    b.disabled = false;
+    const b = $('#rateFetch'), tok = ++rateTok; b.disabled = true;
+    try {
+      const r = await Langs.rates(); if (tok !== rateTok || f.elements.currency.value !== cur) return;
+      const v = r.usd[cur.toLowerCase()]; if (!v) throw new Error('no ' + cur);
+      f.elements.rate.value = String(+v.toFixed(v < 2 ? 4 : 2)); $('#rateHelp').textContent = `1 USD = ${f.elements.rate.value} ${cur}, as of ${r.date}. Typed values win; ↻ refreshes.`; markSetup(); if (!quiet) snd('toggle.on');
+    }
+    catch (e) { if (!quiet && tok === rateTok) { toast("Couldn't fetch today's rate. Type it in.", true); snd('state.error'); } }
+    finally { b.disabled = false; }
   }
   $('#rateFetch').addEventListener('click', () => fetchRate(false));
   $('#curSel').addEventListener('change', () => { const f = $('#setupForm'); if (f.elements.currency.value && !f.elements.rate.value.trim()) fetchRate(true); });
@@ -538,7 +555,7 @@
     const out = [], add = (id, v) => { if (!v || typeof v !== 'object' || !v.en) return; if (v[to] && v[to] !== v.en) return; out.push({ id, text: v.en }); };
     for (const k of ['title', 'brand', 'tagline', 'legend', 'footer', 'meta']) add('site.' + k, doc.site[k]);
     doc.tiers.forEach((tr, i) => ['name', 'short', 'range', 'blurb'].forEach(k => add(`tier.${i}.${k}`, tr[k])));
-    for (const k of ['gotNote', 'gotSign']) add('ui.' + k, doc.ui[k]);
+    for (const [k, v] of Object.entries(doc.ui)) if (!/^[a-z]{2}$/.test(k)) add('ui.' + k, v);   // the page's own words too (a language without a ready pack); never the old region keys
     doc.items.forEach(it => { ['name', 'desc', 'note'].forEach(k => add(`item.${it.id}.${k}`, it[k])); (it.where || []).forEach((w, n) => add(`item.${it.id}.where.${n}`, w.t)); });
     return out;
   }
@@ -554,6 +571,7 @@
   }
   $('#xlBtn').addEventListener('click', async () => {
     if (saving) { toast('Still saving…'); return; }
+    if (setupDirty() && !await saveSetup()) return;   // the language picked above becomes the list's second language first
     const to = L2, doc = JSON.parse(JSON.stringify(DOC)), strings = xlStrings(doc, to), help = $('#xlHelp'), b = $('#xlBtn');
     if (!strings.length) { help.textContent = `Everything already has a ${Langs.info(to).name} version.`; toast('Nothing left to translate'); return; }
     b.disabled = true; help.textContent = `Translating ${strings.length} texts…`;
@@ -567,26 +585,40 @@
     const n = xlApply(doc, to, jr.out || []);
     if (await save(doc, `Translated ${n} texts`)) { help.textContent = `Done: ${n} texts now in ${Langs.info(to).name}. Review them in Items and Texts.`; renderAll(); }
   });
-  $('#marketRows').addEventListener('click', (e) => { const b = e.target.closest('[data-mx]'); if (!b) return; SETUP_MARKETS = SETUP_MARKETS.filter(c => c !== b.dataset.mx); renderMarkets(); snd('toggle.off'); });
-  $('#marketAddBtn').addEventListener('click', () => { const c = $('#marketAdd').value; if (!c || SETUP_MARKETS.includes(c) || SETUP_MARKETS.length >= 6) return; SETUP_MARKETS.push(c); renderMarkets(); snd('toggle.on'); });
-  $('#setupForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const f = e.target, doc = JSON.parse(JSON.stringify(DOC));
+  $('#marketRows').addEventListener('click', (e) => { const b = e.target.closest('[data-mx]'); if (!b) return; SETUP_MARKETS = SETUP_MARKETS.filter(c => c !== b.dataset.mx); renderMarkets(); markSetup(); snd('toggle.off'); });
+  $('#marketAddBtn').addEventListener('click', () => { const c = $('#marketAdd').value; if (!c || SETUP_MARKETS.includes(c) || SETUP_MARKETS.length >= 6) return; SETUP_MARKETS.push(c); renderMarkets(); markSetup(); snd('toggle.on'); });
+  $('#setupForm').addEventListener('submit', (e) => { e.preventDefault(); saveSetup(); });
+  $('#setupForm').addEventListener('input', markSetup); $('#setupForm').addEventListener('change', markSetup);
+  /* → true once the list carries the new setup; the admin's labels and the editor follow it. One at a time: a second tap
+     (Save twice, Save then Translate, Save then the question on a tab tap) joins the save in flight instead of racing it */
+  let setupP = null;
+  const saveSetup = () => setupP || (setupP = doSaveSetup().finally(() => { setupP = null; }));
+  async function doSaveSetup() {
+    const f = $('#setupForm'), doc = JSON.parse(JSON.stringify(DOC));
     const lang2 = String(f.elements.lang2.value || 'ru').toLowerCase(), cur = f.elements.currency.value, rate = parseFloat(String(f.elements.rate.value).replace(',', '.'));
     doc.site.lang2 = lang2;
     if (cur) doc.site.currency = cur; else delete doc.site.currency;
     if (rate > 0) doc.site.rate = rate; else delete doc.site.rate;
     doc.site.markets = SETUP_MARKETS.slice(0, 6);
     const rs = String(f.elements.rate.value).trim();
-    if (rs && !(rate > 0 && isFinite(rate))) { toast('Rate must be a number like 34.5', true); snd('state.error'); return; }
+    if (rs && !(rate > 0 && isFinite(rate))) { toast('Rate must be a number like 34.5', true); snd('state.error'); return false; }
     const missing = Object.values(doc.ui).some(v => v && typeof v === 'object' && !v[lang2]);
     if (PACKS.includes(lang2) && lang2 !== 'ru' && missing) {   // bring the page's own words in that language (never overwriting what is there)
       const pack = await fetch(`assets/lang/${lang2}.json`, { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).catch(() => null);
       if (pack) for (const [k, v] of Object.entries(pack)) { if (!doc.ui[k]) continue; if (typeof doc.ui[k] !== 'object') doc.ui[k] = { en: doc.ui[k] }; if (!doc.ui[k][lang2]) doc.ui[k][lang2] = v; }
       else toast(`Could not load the ${lang2.toUpperCase()} words; the page falls back to English`, true);
     }
-    if (await save(doc, 'Setup saved')) { L2 = lang2; applyL2(); renderAll(); }
-  });
+    if (!await save(doc, 'Setup saved')) return false;
+    L2 = lang2; applyL2(); renderAll(); return true;
+  }
+  /* leaving the Setup tab, Reload or Sign out with unsaved picks asks first */
+  async function guardSetup() {
+    if (!setupDirty()) return true;
+    const v = await ask({ title: 'Unsaved setup', text: 'Save it, or throw it away?', buttons: [{ label: 'Save setup', value: 'save', kind: 'primary' }, { label: 'Discard', value: 'discard', kind: 'ghost danger' }, { label: 'Keep editing', value: 'keep', kind: 'ghost' }] });
+    if (v === 'save') return await saveSetup();
+    if (v === 'discard') { renderSetup(); snd('toggle.off'); return true; }
+    return false;
+  }
   let cur = null, isNew = false, pendingImage = null;   // pendingImage: { blob, type, w, h, url, alpha, src = Worker URL once uploaded }
   function openEditor(id) {
     if (saving) { toast('Still saving…'); return; }   // an editor opened now would show the list from before that save lands
@@ -695,6 +727,50 @@
   const CYR = { а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya', ı: 'i' };
   const slug = (s) => [...String(s || '').toLowerCase()].map(ch => CYR[ch] ?? ch).join('').normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-').slice(0, 36).replace(/^-+|-+$/g, '');
+  /* the editor's fields → the item; words in other languages (an earlier second language) stay */
+  const keep = (o) => (o && typeof o === 'object') ? o : {};
+  function readItem(it, name) {
+    name = name || { en: form.elements['name.en'].value.trim(), [L2]: form.elements['name.l2'].value.trim() };
+    it.name = Object.assign(keep(it.name), name, { [L2]: name[L2] || name.en });
+    const de = form.elements['desc.en'].value.trim(), d2 = form.elements['desc.l2'].value.trim();
+    it.desc = Object.assign(keep(it.desc), { en: de, [L2]: d2 || de });
+    const pe = form.elements['price.en'].value.trim(), pr = form.elements['price.l2'].value.trim();
+    it.price = Object.assign(keep(it.price), { en: pe || pr, [L2]: pr || pe || pr });   // prices in other languages stay
+    const ne = form.elements['note.en'].value.trim(), nr = form.elements['note.l2'].value.trim();
+    it.note = Object.assign(keep(it.note), { en: ne, [L2]: nr || ne });
+    it.tier = segVal('#tierSeg') || DOC.tiers[0].id;
+    it.status = segVal('#statusSeg') || 'wanted';
+    it.kind = segVal('#kindSeg') || 'photo';
+    it.avail = Object.assign(keep(it.avail), Object.fromEntries(markets().map(c => [c, segVal(`[data-av="${c}"]`) || 'n'])));
+    it.where = readWhere();
+    return it;
+  }
+  /* ---------- preview: the real page (index.html?preview=1) in a frame, fed this editor's draft; tap the card to flip it ---------- */
+  const pv = $('#preview'), pvFrame = $('#prevFrame');
+  let pvReady = false, pvLang = 'en';
+  function previewDoc() {
+    const doc = JSON.parse(JSON.stringify(DOC)), it = readItem(cur.id ? JSON.parse(JSON.stringify(cur)) : { id: 'preview' });
+    if (pendingImage) { it.image = pendingImage.url; it.w = pendingImage.w; it.h = pendingImage.h; it.illustration = null; }
+    else if (!cur.image) { it.image = null; delete it.w; delete it.h; }
+    if (it.status === 'dropped') it.status = 'wanted';   // a hidden item still has a card to look at
+    it.order = 0; it.booked = false; doc.items = [it];
+    return doc;
+  }
+  function postPreview() {
+    if (!pvReady || !pv.open || !pvFrame.contentWindow) return;
+    pvFrame.contentWindow.postMessage({ type: 'wl-preview', doc: previewDoc(), lang: pvLang, dark: document.documentElement.classList.contains('dark') }, location.origin);
+  }
+  $('#edPreview').addEventListener('click', () => {
+    if (!pvFrame.getAttribute('src')) { pvFrame.addEventListener('load', () => { pvReady = true; postPreview(); }, { once: true }); pvFrame.setAttribute('src', 'index.html?preview=1'); }
+    pv.showModal(); snd('toggle.on'); postPreview();
+  });
+  $('#prevLang').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    pvLang = b.dataset.v; $$('#prevLang button').forEach(x => x.classList.toggle('on', x === b)); postPreview(); snd(pvLang === 'alt' ? 'toggle.on' : 'toggle.off');
+  });
+  $('#prevClose').addEventListener('click', () => pv.close());
+  pv.addEventListener('click', (e) => { if (e.target === pv) pv.close(); });
+  pv.addEventListener('close', () => snd('toggle.off'));
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (saving) { toast('Still saving…'); return; }
@@ -723,20 +799,7 @@
       const base = slug(form.elements.id.value) || slug(name.en) || slug(name[L2]) || 'item-' + Date.now().toString(36);
       id = base; for (let n = 2; doc.items.some(i => i.id === id); n++) id = `${base}-${n}`;
     }
-    const it = nu ? { id } : doc.items.find(i => i.id === id);
-    const keep = (o) => (o && typeof o === 'object') ? o : {};   // words in other languages (an earlier second language) stay
-    it.name = Object.assign(keep(it.name), name, { [L2]: name[L2] || name.en });
-    const de = form.elements['desc.en'].value.trim(), d2 = form.elements['desc.l2'].value.trim();
-    it.desc = Object.assign(keep(it.desc), { en: de, [L2]: d2 || de });
-    const pe = form.elements['price.en'].value.trim(), pr = form.elements['price.l2'].value.trim();
-    it.price = Object.assign(keep(cur.price), { en: pe || pr, [L2]: pr || pe || pr });   // prices in other languages stay
-    const ne = form.elements['note.en'].value.trim(), nr = form.elements['note.l2'].value.trim();
-    it.note = Object.assign(keep(it.note), { en: ne, [L2]: nr || ne });
-    it.tier = segVal('#tierSeg') || doc.tiers[0].id;
-    it.status = segVal('#statusSeg') || 'wanted';
-    it.kind = segVal('#kindSeg') || 'photo';
-    it.avail = Object.assign(keep(it.avail), Object.fromEntries(markets().map(c => [c, segVal(`[data-av="${c}"]`) || 'n'])));
-    it.where = readWhere();
+    const it = readItem(nu ? { id } : doc.items.find(i => i.id === id), name);
     if (pi) {
       if (!pi.src) {   // a fresh id per upload: the live photo stays as it is until the saved list points elsewhere
         const key = `${id.slice(0, 31).replace(/-+$/, '')}-${Date.now().toString(36)}`;
@@ -756,7 +819,7 @@
       it.image = pi.src; it.w = pi.w; it.h = pi.h; it.illustration = null;
     } else if (!cur.image) { it.image = null; delete it.w; delete it.h; if (!it.illustration) it.illustration = null; }
     if (nu) { it.order = Math.max(0, ...doc.items.map(i => i.order || 0)) + 1; it.illustration = it.illustration || null; doc.items.push(it); }
-    if (await save(doc, nu ? 'Added' : 'Saved')) { if (cur === session && ed.open) ed.close(); renderItems(); }   // save() also drops the photo it replaced
+    if (await save(doc, nu ? 'Added' : 'Saved')) { if (cur === session && ed.open) { ed._byUs = true; ed.close(); } renderItems(); }   // save() also drops the photo it replaced
     else if (pi && (cur !== session || !ed.open)) dropUpload(pi.src);   // failed after the owner closed the editor
   });
   /* Cancel, a tap on the backdrop and Esc all go through the unsaved-changes guard; a drag that merely ends on the backdrop does nothing */
@@ -771,7 +834,7 @@
     if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Tap again to delete for good'; setTimeout(() => { delete b.dataset.sure; b.textContent = 'Delete item'; }, 3500); return; }
     const doc = JSON.parse(JSON.stringify(DOC)), session = cur;
     doc.items = doc.items.filter(i => i.id !== cur.id);
-    if (await save(doc, 'Deleted')) { if (cur === session && ed.open) ed.close(); renderItems(); }
+    if (await save(doc, 'Deleted')) { if (cur === session && ed.open) { ed._byUs = true; ed.close(); } renderItems(); }
   });
 
   /* ---------- toast ---------- */
@@ -790,6 +853,14 @@
     if (k && !imgKeys(DOC).has(k)) fetch(imgBase() + k, { method: 'DELETE', headers: authHeaders() }).catch(() => {});
   }
   ed.addEventListener('close', () => { if (!saving && pendingImage) dropUpload(pendingImage.src); });
+  /* Chrome closes a dialog on a second Esc (or Android Back) with no tap in between WITHOUT a cancel event — the guard above never
+     runs. Any close our code did not ask for, with edits on the sheet, reopens it and asks. (iPhone has no Esc.) */
+  ed.addEventListener('close', () => {
+    const ours = ed._byUs; ed._byUs = false;
+    if (ours || !cur || edSnap() === edBase) return;
+    if (pendingImage && pendingImage.src) pendingImage.src = null;   // its Worker copy was just dropped above: a Save uploads afresh
+    ed.showModal(); edClose();
+  });
 
   boot();
 })();

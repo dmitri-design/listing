@@ -46,6 +46,8 @@ const priceOf = (it) => {
 const regionLabel = (code) => ({ en: window.Langs ? Langs.regionName(code, 'en') : code, [L2]: window.Langs ? Langs.regionName(code, L2) : code });
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
 const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
+/* admin's "Preview card": the page runs inside admin.html with ?preview=1 and shows the one card it is handed (postMessage), nothing from the network */
+const PREVIEW = new URLSearchParams(location.search).get('preview') === '1' && window.parent !== window;
 
 let DATA = null;   // { site, tiers, ui, items }
 /* booking API (Cloudflare Worker). The page stays static; without an API the booking UI simply isn't shown. */
@@ -181,12 +183,16 @@ function imgHTML(it, cls, eager) {
     return `<div class="${cls}">${art(it.illustration)}<span class="sketch">${t(DATA.ui.sketch)}</span></div>`;
   }
   const dim = it.w && it.h ? ` width="${+it.w}" height="${+it.h}"` : '';
-  return `<div class="${cls}${photo ? ' photo' : ''}"><img src="${esc(it.image)}" alt=""${dim} loading="${eager ? 'eager' : 'lazy'}" decoding="async"></div>`;
+  return `<div class="${cls}${photo ? ' photo' : ''}"><img src="${esc(it.image)}" alt=""${dim} loading="${eager ? 'eager' : 'lazy'}" decoding="async">${zoomBtn(it)}</div>`;
 }
+/* the corner button on the front and the thumb on the back open the photo big (openZoom) */
+const ZOOM_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4H20v5.5M9.5 20H4v-5.5M20 4l-6.5 6.5M4 20l6.5-6.5"/></svg>`;
+const ZOOM0 = { en: 'See the photo', ru: 'Посмотреть фото' }, CLOSE0 = { en: 'Close', ru: 'Закрыть' };   // a list saved before these words existed
+const zoomBtn = (it) => `<button type="button" class="zoom" data-zoom="${esc(it.id)}"><span class="sr">${t(DATA.ui.zoom || ZOOM0)}</span>${ZOOM_ICON}</button>`;
 function thumbHTML(it) {
   const photo = it.kind === 'photo';
   if (!it.image) return `<div class="thumb">${art(it.illustration)}</div>`;
-  return `<div class="thumb${photo ? ' photo' : ''}"><img src="${esc(it.image)}" alt="" loading="lazy" decoding="async"></div>`;
+  return `<button type="button" class="thumb${photo ? ' photo' : ''}" data-zoom="${esc(it.id)}"><img src="${esc(it.image)}" alt="" loading="lazy" decoding="async"><span class="sr">${t(DATA.ui.zoom || ZOOM0)}</span></button>`;
 }
 /* got it: the back drops price, availability and shops — just the stamp and a handwritten thank-you (text editable in admin → Texts) */
 /* a longer note is written smaller, so the stamp and the signature stay on the card (past 13 px the note's end clips) */
@@ -395,6 +401,7 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('a')) return;
   const bb = e.target.closest('.bk-btn'); if (bb) { openSheet(bb.dataset.id); return; }
   const ub = e.target.closest('.bk-undo'); if (ub) { undo(ub); return; }
+  const z = e.target.closest('[data-zoom]'); if (z) { openZoom(z.dataset.zoom); return; }
   const card = e.target.closest('.card'); if (!card) return;
   flip(card);
 });
@@ -462,7 +469,7 @@ if (finePointer.matches && !reduced.matches) {
    "Turn on" in a one-time pill, never on a card tap. Cosmetic only; the foil drifts on its own without it. */
 let tiltOn = false, tiltAllowed = false, tiltBase = null, tiltEv = null, tiltRaf = 0, tiltHinted = false, tiltOffered = false;
 function startTilt() {
-  if (tiltOn || reduced.matches || finePointer.matches || typeof DeviceOrientationEvent === 'undefined') return;
+  if (tiltOn || PREVIEW || reduced.matches || finePointer.matches || typeof DeviceOrientationEvent === 'undefined') return;
   if (typeof DeviceOrientationEvent.requestPermission !== 'function' || tiltAllowed) return listenTilt();
   offerTilt();
 }
@@ -539,7 +546,7 @@ async function tokHash(tok) {
   catch (e) { return null; }
 }
 async function refreshBookings() {
-  if (!API || !DATA) return;
+  if (!API || !DATA || PREVIEW) return;
   bookingsAt = Date.now();
   const seq = ++bkSeq;
   try {
@@ -598,7 +605,7 @@ function ensureSheet() {
   return sheet;
 }
 function openSheet(id) {
-  const it = DATA && DATA.items.find(i => i.id === id); if (!it || !API || booking) return;   // one booking at a time
+  const it = DATA && DATA.items.find(i => i.id === id); if (!it || !API || booking || PREVIEW) return;   // one booking at a time; nothing is booked from admin's preview
   ensureSheet(); sheetItem = id;
   sheet.querySelector('.sheet-item').innerHTML = t(it.name);
   const err = sheet.querySelector('.sheet-err'); err.hidden = true; err.innerHTML = '';
@@ -696,6 +703,36 @@ async function undo(btn) {
   btn.disabled = false; btn.classList.remove('confirm'); sub.innerHTML = t(ui.retry); snd('state.error', 'signature');
 }
 
+/* ---------- the photo, big: a glass dialog over the room; a tap anywhere, ✕, Esc or a swipe closes it ---------- */
+let zoomD = null;
+function ensureZoom() {
+  if (zoomD) return zoomD;
+  zoomD = document.createElement('dialog'); zoomD.className = 'zoom-d';
+  zoomD.innerHTML = `<figure class="zoom-in"><div class="zoom-img"><img alt="" decoding="async"></div><figcaption></figcaption></figure><button type="button" class="zoom-x"><span class="sr">${t(DATA.ui.close || CLOSE0)}</span><span aria-hidden="true">✕</span></button>`;
+  app.appendChild(zoomD);
+  /* swipe it away (the Photos gesture): the picture follows the finger, then springs back or leaves; a tap closes too */
+  const fig = zoomD.querySelector('.zoom-in'); let y0 = null, dy = 0, moved = 0;
+  fig.addEventListener('pointerdown', (e) => { moved = 0; if (e.pointerType === 'mouse') return; y0 = e.clientY; dy = 0; fig.setPointerCapture(e.pointerId); fig.style.transition = 'none'; });
+  fig.addEventListener('pointermove', (e) => { if (y0 == null) return; dy = e.clientY - y0; fig.style.transform = `translateY(${dy}px)`; fig.style.opacity = String(Math.max(.3, 1 - Math.abs(dy) / 320)); });
+  const end = () => { if (y0 == null) return; y0 = null; moved = Math.abs(dy); fig.style.transition = ''; fig.style.transform = ''; fig.style.opacity = ''; if (moved > 90) closeZoom(); };
+  fig.addEventListener('pointerup', end); fig.addEventListener('pointercancel', end);
+  zoomD.addEventListener('click', () => { const m = moved; moved = 0; if (m <= 10) closeZoom(); });   // the click after a swipe is not a tap
+  zoomD.querySelector('.zoom-x').addEventListener('click', (e) => { e.stopPropagation(); closeZoom(); });
+  zoomD.addEventListener('close', () => { moved = 0; });
+  zoomD.addEventListener('close', () => snd('toggle.off', 'crisp'));
+  return zoomD;
+}
+function openZoom(id) {
+  const it = DATA && DATA.items.find(i => i.id === id); if (!it || !it.image) return;
+  const d = ensureZoom(), img = d.querySelector('img');
+  d.classList.toggle('photo', it.kind === 'photo');
+  if (it.w && it.h) { img.width = +it.w; img.height = +it.h; } else { img.removeAttribute('width'); img.removeAttribute('height'); }
+  img.removeAttribute('src'); img.src = it.image;   // another item's photo never shows under this name while the new one loads
+  d.querySelector('figcaption').innerHTML = t(it.name);
+  if (!d.open) { d.showModal(); snd('toggle.on', 'crisp'); }
+}
+function closeZoom() { if (zoomD && zoomD.open) zoomD.close(); }
+
 /* ---------- data: the repo JSON paints first; when an API is configured, the live list (edited from admin.html) replaces it ---------- */
 const okShape = (d) => d && d.site && Array.isArray(d.tiers) && d.ui && Array.isArray(d.items);
 /* what a document shows, minus its version stamp and API address (the repo copy and the live one differ there) */
@@ -761,4 +798,12 @@ async function load() {
     apply(late, true); refreshBookings();
   });
 }
-load();
+if (PREVIEW) {
+  document.documentElement.classList.add('preview');
+  window.addEventListener('message', (e) => {
+    if (e.origin !== location.origin || !e.data || e.data.type !== 'wl-preview' || !okShape(e.data.doc)) return;
+    if (window.Theme && typeof e.data.dark === 'boolean') Theme.set(e.data.dark, false);
+    apply(e.data.doc, !!DATA);   // a card already on the wall keeps its side
+    setLang(e.data.lang === 'alt' ? 'alt' : 'en', false);
+  });
+} else load();

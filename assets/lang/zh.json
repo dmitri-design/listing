@@ -33,5 +33,7 @@
  "bookedDone": "已预订",
  "bookedTaken": "已被别人预订",
  "gotNote": "谢谢你来看！这个我已经有了，很快就会从列表里消失。",
- "unbooking": "撤销中…"
+ "unbooking": "撤销中…",
+ "zoom": "放大照片",
+ "close": "关闭"
 }
