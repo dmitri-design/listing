@@ -106,6 +106,7 @@ html.dark .theme-toggle .sun { display: block; }
 h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(min(44px, 12.8vw), 9vw, 96px); line-height: .98; letter-spacing: -.02em; margin: 34px 0 10px; min-height: 1em; }
 h1 .w { white-space: nowrap; }   /* a word never breaks between its letters */
 h1 .ch { display: inline-block; animation: rise .8s cubic-bezier(.2,.9,.25,1.15) both; animation-delay: calc(var(--i) * 42ms); }
+h1.still .ch { animation: none; }   /* a late live list redraws the words in place */
 h1 i { font-style: italic; color: var(--gold); }
 .tag { max-width: 560px; margin: 0 auto; color: var(--muted); font-size: 15px; line-height: 1.5; animation: fade 1s .5s both; }
 /* "About the owner": a quiet link under the tag line (shown once the owner wrote a story in admin → Texts); opens the about sheet */
@@ -371,28 +372,71 @@ html:has(dialog.sheet[open]), html:has(dialog.zoom-d[open]) { overflow: hidden; 
 .confirm-stage.is-resolved .confirmation-check path { animation: confirmation-check-draw .52s cubic-bezier(.16,1,.3,1) .15s forwards; }
 .confirm-stage.shaking { animation: shake .38s cubic-bezier(.4,0,.2,1); }
 .confirm-stage.shaking .complete-confirm { box-shadow: inset 0 0 0 2px rgba(214,96,84,.95); }
-/* the about sheet: the grabber and Close stay put, the story scrolls under them; photo and title centered, the story left-aligned, links as pills */
-.sheet.about { overflow: hidden; }
-.about .sheet-in { max-height: 92dvh; grid-template-rows: auto minmax(0, 1fr); gap: 6px; }
-.about .sheet-cancel { justify-self: end; }
-.about-body { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; display: grid; gap: 14px; justify-items: center; padding: 2px 2px 6px; }
-.about-photo { display: block; width: auto; height: auto; max-width: 100%; max-height: 160px; border-radius: 16px; object-fit: cover; box-shadow: 0 10px 30px -14px rgba(40,30,10,.45); }
-.about-body .about-title { margin: 0; font: 400 24px/1.2 var(--serif); letter-spacing: -.01em; text-align: center; overflow-wrap: anywhere; }   /* outranks .sheet h2 */
-.about-text { justify-self: stretch; font-size: 15px; line-height: 1.55; }
+/* the about sheet: matte glass over the room (which goes soft behind it). The photo and the title up top, the story, a drawing
+   in the lower right corner, a rule, then the links as quiet uppercase pills — after a members-club menu Dmitri liked */
+.sheet.about { overflow: hidden; background: rgba(255,253,248,.74); border: 1px solid rgba(255,255,255,.75); backdrop-filter: blur(28px) saturate(1.3); -webkit-backdrop-filter: blur(28px) saturate(1.3);
+  box-shadow: 0 -12px 40px rgba(40,30,10,.18), inset 0 1px 0 rgba(255,255,255,.85); }
+.sheet.about::backdrop { background: rgba(34,29,23,.26); backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px); }
+.about .sheet-in { position: relative; max-height: 92dvh; grid-template-rows: auto minmax(0, 1fr); gap: 0; padding: 8px 20px calc(20px + env(safe-area-inset-bottom)); }
+.about-x { position: absolute; top: 8px; right: 10px; z-index: 2; width: 44px; height: 44px; border-radius: 50%; border: 0; background: none; color: var(--muted); font: 300 22px/1 var(--sans); display: grid; place-items: center; cursor: pointer; appearance: none; padding: 0; }
+.about-x:hover { color: var(--ink); }
+.about-x:focus-visible { outline: 2px solid #8fb08a; outline-offset: 2px; }
+.about-body { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 12px 2px 4px; }
+.about-head { display: flex; align-items: center; gap: 14px; padding-right: 40px; margin-bottom: 14px; }
+.about-photo { flex: none; width: 64px; height: 64px; border-radius: 50%; object-fit: cover; box-shadow: 0 6px 18px -8px rgba(40,30,10,.5), 0 0 0 1px rgba(255,255,255,.85); }
+.about-body .about-title { margin: 0; font: 400 24px/1.15 var(--serif); letter-spacing: -.01em; text-align: left; overflow-wrap: anywhere; }   /* outranks .sheet h2 */
+.about-text { font-size: 15px; line-height: 1.55; }
 .about-text p { margin: 0 0 10px; overflow-wrap: anywhere; }
 .about-text p:last-child { margin-bottom: 0; }
-.about-links { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.about-hero { display: flex; justify-content: flex-end; margin: 8px -2px -4px 0; pointer-events: none; }
+.about-hero img { display: block; width: auto; height: 150px; max-width: 46%; object-fit: contain; filter: drop-shadow(0 10px 10px rgba(40,30,10,.12)); }
+.about-rule { border: 0; height: 1px; background: rgba(34,29,23,.16); margin: 18px 0 14px; }
+.about-links { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .about-links li { min-width: 0; max-width: 100%; }
-.about-links a { display: inline-flex; align-items: center; max-width: 100%; min-height: 44px; padding: 8px 16px; border-radius: 999px; font: 500 14px/1.2 var(--sans); color: var(--ink); text-decoration: none; overflow-wrap: anywhere;
-  background: var(--cream-2); border: 1px solid var(--line); box-shadow: 0 1px 2px rgba(40,30,10,.06); }
-.about-links a::after { content: "\00a0↗"; color: var(--muted); }   /* no-break space: the arrow stays with the last word */
-.about-links a:hover { background: var(--cream); }
+.about-links a { display: inline-flex; align-items: center; max-width: 100%; min-height: 44px; padding: 0 16px; border-radius: 999px; font: 600 12px/1.2 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--ink); text-decoration: none; overflow-wrap: anywhere;
+  background: rgba(255,255,255,.4); border: 1px solid rgba(34,29,23,.26); transition: background .15s, border-color .15s; }
+.about-links a::after { content: "\00a0↗"; color: var(--muted); letter-spacing: 0; }   /* no-break space: the arrow stays with the last word */
+.about-links a:hover { background: rgba(255,255,255,.8); border-color: var(--ink); }
 .about-links a:focus-visible { outline: 2px solid #8fb08a; outline-offset: 2px; }
+/* phones: the band with the grabber is the swipe handle, a thumb tall (the ✕ sits on its right end) */
+@media (max-width: 719px) { .about .sheet-grab { margin: -8px -20px 0; padding: 10px 20px 0; min-height: 44px; } .about-body { padding-top: 0; } }
+@media (min-width: 720px) { .sheet.about { max-width: 640px; } .about .sheet-in { padding: 20px 28px 26px; } .about-photo { width: 72px; height: 72px; } .about-hero img { height: 180px; } .about-x { top: 14px; right: 14px; } }
 @media (min-width: 720px) { .sheet { margin: auto; border-radius: 22px; } .grabber { display: none; } }
 
 /* ---------- footer ---------- */
 footer { max-width: 760px; margin: 30px auto 40px; padding: 0 22px calc(env(safe-area-inset-bottom) + 0px); text-align: center; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
 footer .bar { width: 46px; height: 1px; background: var(--line); margin: 0 auto 14px; }
+/* the owner's name as keycaps, after the Velvet UI wordmark, exact: a tile on a 6 px slab (a hairline blur under it) that sinks
+   5 px while held (35 ms in, 70 ms out), no hover, a thin ring only for keyboard focus; the card under the keys shows "D - 1/6"
+   and the word, cross-fading and sliding 200 ms toward the key that was pressed. The rule above the keys grows. */
+footer.lettered .bar { width: 120px; height: 2px; margin-bottom: 24px; }
+.letters { max-width: 560px; margin: 0 auto 26px; text-align: left; }
+.lset:empty { display: none; }
+.lkeys { display: grid; grid-template-columns: repeat(var(--n, 6), minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; width: 100%; }
+.lkeys.many { display: flex; flex-wrap: wrap; justify-content: center; column-gap: 4px; row-gap: 14px; }   /* fitLetters(): 44 px keys that wrap */
+.lkeys.many .lkey { flex: none; width: 44px; }
+.lkey { --side: #e9e2d2; --side-down: #e0d8c5; position: relative; width: 100%; aspect-ratio: 1 / 1; height: auto; min-height: 34px; appearance: none; margin: 0; padding: 0; cursor: pointer;
+  background: var(--paper); border: .5px solid rgba(34,29,23,.12); border-radius: 10px; box-shadow: 0 6px 0 var(--side), 0 7px 1px rgba(0,0,0,.04);
+  font: 500 clamp(18px, 3vw, 24px)/1 var(--sans); color: rgba(34,29,23,.85); text-align: center; user-select: none; -webkit-user-select: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  transition: transform 70ms ease, box-shadow 70ms ease; }
+.lkey.pressed { transform: translateY(5px); box-shadow: 0 1px 0 var(--side-down), 0 2px 1px rgba(0,0,0,.03); transition-duration: 35ms; }
+.lkey .hint { position: absolute; bottom: 5px; right: 7px; font: 400 9px/1 ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace; color: rgba(34,29,23,.5); }
+@media (hover: none) { .lkey .hint { display: none; } }   /* the shortcut letter means nothing without a keyboard */
+.lkey:focus { outline: none; }
+.lkey:focus-visible { outline: 1.5px solid rgba(47,108,222,.7); outline-offset: 0; }
+.lcard { position: relative; width: 100%; min-height: 84px; text-align: left; background: var(--cream); border: .5px solid rgba(34,29,23,.06); border-radius: 10px; overflow: hidden; }
+.llayer { position: absolute; inset: 0; padding: 18px 22px; opacity: 0; pointer-events: none; transform: translateX(var(--from-x, 0)); transition: opacity .2s cubic-bezier(.16,1,.3,1), transform .2s cubic-bezier(.16,1,.3,1); }
+.llayer.active { opacity: 1; pointer-events: auto; transform: translateX(0); transition-delay: 30ms; }
+.llayer.no-transition { transition: none; }
+.lletter { margin: 0 0 4px; font: 400 11px/1.33 ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace; letter-spacing: .1em; color: rgba(34,29,23,.5); }
+.llayer h3 { margin: 0; font: 500 15px/1.33 var(--sans); letter-spacing: 0; color: rgba(34,29,23,.85); overflow-wrap: anywhere; }
+/* phones: the keys borrow 12 px of the footer's gutter on each side, so a 6–7 letter name stays one row of thumb-sized keys */
+@media (max-width: 419px) { .letters { margin-left: -12px; margin-right: -12px; } .lkeys { gap: 8px; } .llayer { padding: 14px 16px; } .lcard { min-height: 72px; } }
+html.dark .lkey { --side: #15120e; --side-down: #100d0a; background: #2a241d; border-color: rgba(255,255,255,.12); color: rgba(241,233,218,.85); }
+html.dark .lkey .hint { color: rgba(241,233,218,.5); }
+html.dark .lcard { background: #15120e; border-color: rgba(255,255,255,.06); }
+html.dark .lletter { color: rgba(241,233,218,.5); }
+html.dark .llayer h3 { color: rgba(241,233,218,.85); }
 
 /* probe: lets JS read --cw as a number without parsing clamp() */
 .cwprobe { position: absolute; left: -9999px; top: 0; width: var(--cw); height: 0; }
@@ -438,8 +482,12 @@ html.dark .sheet::backdrop { background: rgba(0,0,0,.55); }
 html.dark .sheet input { background: #15120e; }
 html.dark .grabber { background: #4a4036; }
 html.dark .sheet-cancel { color: #d9b26a; }
-html.dark .about-links a { background: #352d24; border-color: #4a4036; }
-html.dark .about-links a:hover { background: #3f362c; }
+html.dark .sheet.about { background: rgba(34,29,23,.7); border-color: rgba(255,255,255,.12); box-shadow: 0 -12px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08); }
+html.dark .sheet.about::backdrop { background: rgba(0,0,0,.42); }
+html.dark .about-hero img { filter: invert(1) brightness(.92) drop-shadow(0 10px 10px rgba(0,0,0,.4)); }   /* the ink goes light: a negative of the drawing */
+html.dark .about-rule { background: rgba(241,233,218,.18); }
+html.dark .about-links a { background: rgba(255,255,255,.06); border-color: rgba(241,233,218,.32); }
+html.dark .about-links a:hover { background: rgba(255,255,255,.14); border-color: var(--ink); }
 @media (prefers-reduced-motion: reduce) { ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; } }
 
 @supports (transition-timing-function: linear(0, 1)) {
@@ -447,6 +495,7 @@ html.dark .about-links a:hover { background: #3f362c; }
 }
 @media (prefers-reduced-motion: reduce) {
   .hang, .row.in .drop, h1 .ch, .tag, .about-row, .swash, .tiernav, .legend, .card.flipped, .fx .sweep, .tilt-hint, .toast, .confirm-stage.shaking { animation: none !important; }
+  .lkey, .llayer { transition-duration: .01ms !important; }
   .confirmation-success { clip-path: none; transition: opacity .2s; }
   .confirm-stage.is-resolved .confirmation-check path { animation: none; stroke-dashoffset: 0; }
   .row.pre .drop { opacity: 1; }

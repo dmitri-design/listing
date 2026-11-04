@@ -31,7 +31,31 @@ function exec(sql, a) {
   throw new Error('unmocked SQL: ' + sql);
 }
 const env = { DB: { prepare: stmt }, ALLOWED_ORIGINS: 'https://dmitri-design.github.io', LISTS: JSON.stringify({ dmitri: 'https://static.example/items.json', other: 'https://static.example/other.json' }), ADMIN_TOKEN: 'secret-admin-token-xyz', IP_SALT: 's' };
-globalThis.fetch = async (u) => new Response(JSON.stringify({ items: [{ id: 'osprey', status: 'wanted' }, { id: 'mic', status: 'got' }] }), { status: 200 });
+/* the static list for bookings, and a stand-in Claude: letters → a fixed set (one shuffled, one missing), translate → "XX:" + the text */
+let claudeCalls = 0, lastClaude = null;
+globalThis.fetch = async (u, init) => {
+  if (String(u).startsWith('https://api.anthropic.com/')) {
+    claudeCalls++;
+    const body = JSON.parse(init.body), prompt = body.messages[0].content; lastClaude = { headers: init.headers, body };
+    let text, stop = 'end_turn';
+    if (/one object per letter/.test(prompt)) {
+      const name = (prompt.match(/Owner's name: "([^"]*)"/) || [])[1];
+      if (name === 'Dmitri') text = '[{"ch":"D","word":"Dedicated"},{"ch":"m","word":"Mindful"},{"ch":"i","word":"Inspiring"},{"ch":"r","word":"Radiant"},{"ch":"i","word":"Imaginative"}]';   // "t" skipped
+      else if (name === 'Cut') { text = '[{"ch":"C","word":"Cur'; stop = 'max_tokens'; }   // thinking ate the budget mid-answer
+      else if (name === 'Prose') text = 'Here are some lovely words for you!';
+      else if (name === 'Obj') text = '{"O":"Open","b":"Bold","j":"Jolly"}';
+      else if (name === 'Nil') text = '[]';
+      else text = 'Sure:\n[{"ch":"m","word":"Mindful"},{"ch":"D","word":"Dedicated"},{"ch":"x","word":"Nope"}]';   // shuffled, "i" missing, "x" invented
+    } else {
+      const arr = JSON.parse(prompt.slice(prompt.indexOf('[{')));
+      if (arr.some(x => x.text === 'REFUSE')) { text = ''; stop = 'refusal'; }
+      else if (arr.some(x => x.text === 'CUT')) { text = '[{"id":"site.title","text":"x"},{"id":"b","te'; stop = 'max_tokens'; }
+      else text = JSON.stringify(arr.map(x => ({ id: x.id, text: x.id === 'site.owner' ? 'Дмитро' : 'XX:' + x.text })));
+    }
+    return new Response(JSON.stringify({ content: [{ type: 'thinking', thinking: '' }, { type: 'text', text }], stop_reason: stop }), { status: 200 });
+  }
+  return new Response(JSON.stringify({ items: [{ id: 'osprey', status: 'wanted' }, { id: 'mic', status: 'got' }] }), { status: 200 });
+};
 const O = 'https://dmitri-design.github.io';
 const call = (method, path, { body, headers = {}, origin = O } = {}) => worker.fetch(new Request('https://api.test' + path, { method, headers: { ...(origin ? { Origin: origin } : {}), ...headers }, body }), env);
 const j = async (r) => { const t = await r.text(); try { return JSON.parse(t); } catch { return t; } };
@@ -111,5 +135,46 @@ r = await call('DELETE', '/api/lists/dmitri/images/about-1', { headers: { Author
 const envNoAdmin = { ...env, ADMIN_TOKEN: undefined };
 r = await worker.fetch(new Request('https://api.test/api/lists/dmitri/admin/ping', { headers: { Authorization: 'Bearer secret-admin-token-xyz' } }), envNoAdmin); ok(r.status === 503, 'admin disabled without secret → 503');
 r = await call('POST', '/api/lists/dmitri/admin/translate', { headers: { Authorization: 'Bearer secret-admin-token-xyz', 'Content-Type': 'application/json' }, body: JSON.stringify({ to: 'tr', strings: [{ id: 'site.title', text: 'Wishlist' }] }) }); ok(r.status === 503 && (await r.json()).error === 'no_key', 'translate without ANTHROPIC_API_KEY → 503 no_key');
+// the owner's name letter by letter (Claude), and what the page trusts in site.xl / site.letters / site.owner / about.hero
+r = await call('POST', '/api/lists/dmitri/admin/letters', { headers: AJ, body: JSON.stringify({ lang: 'en', name: 'Dmi' }) }); ok(r.status === 503 && (await j(r)).error === 'no_key', 'letters without ANTHROPIC_API_KEY → 503 no_key');
+const envKey = { ...env, ANTHROPIC_API_KEY: 'k' };
+const callK = (method, path, body) => worker.fetch(new Request('https://api.test' + path, { method, headers: { Origin: O, ...AJ }, body: JSON.stringify(body) }), envKey);
+r = await callK('POST', '/api/lists/dmitri/admin/letters', { lang: 'english', name: 'Dmi' }); ok(r.status === 400 && (await j(r)).error === 'bad_lang', 'letters with a bad lang → 400');
+r = await callK('POST', '/api/lists/dmitri/admin/letters', { lang: 'en', name: '  ' }); ok(r.status === 400 && (await j(r)).error === 'bad_name', 'letters with no name → 400');
+r = await callK('POST', '/api/lists/dmitri/admin/letters', { lang: 'en', name: 'Christinaaaaaaaaaaaaaaaaaaaaaa' }); ok(r.status === 400 && (await j(r)).error === 'bad_name', 'letters with a 30-letter name → 400');
+claudeCalls = 0;
+r = await callK('POST', '/api/lists/dmitri/admin/letters', { lang: 'en', name: 'D-mi' }); const lw = await j(r);
+ok(r.status === 200 && claudeCalls === 1 && JSON.stringify(lw.words) === JSON.stringify([{ ch: 'D', word: 'Dedicated' }, { ch: 'm', word: 'Mindful' }, { ch: 'i', word: '' }]), 'letters: one entry per letter of the name, matched by letter, a missing one empty, an invented one dropped ' + JSON.stringify(lw));
+r = await callK('POST', '/api/lists/dmitri/admin/translate', { to: 'uk', strings: [{ id: 'site.owner', text: 'Dmitri' }, { id: 'item.mic.name', text: 'DJI' }] }); const tx = await j(r);
+ok(r.status === 200 && tx.out.length === 2 && tx.out[0].text === 'Дмитро' && tx.out[1].text === 'XX:DJI', 'translate round trip through the stand-in ' + JSON.stringify(tx));
+const cur3 = await j(await call('GET', '/api/lists/dmitri'));
+const okSite = { xl: { uk: { at: 1, kept: { 'item.mic.name': 'DJI Mic Mini 2', 'site.title': 'x' } } }, letters: { on: true, words: { en: [{ ch: 'D', word: 'Dedicated' }, { ch: 'm' }], uk: [] } }, owner: { en: 'Dmitri', uk: 'Дмитро' }, about: { ...about, hero: 'duck' } };
+r = await call('PUT', '/api/lists/dmitri', { body: JSON.stringify({ ...cur3, site: { ...cur3.site, ...okSite } }), headers: AJ }); ok(r.status === 200, 'PUT with xl + letters + owner + about.hero → 200');
+const cur4 = await j(await call('GET', '/api/lists/dmitri')); ok(cur4.site.xl.uk.kept['item.mic.name'] === 'DJI Mic Mini 2' && cur4.site.letters.words.en[0].word === 'Dedicated' && cur4.site.about.hero === 'duck', 'stored as sent');
+for (const [name, patch, err] of [
+  ['xl: a string per language', { xl: { uk: 'x' } }, 'bad_xl'], ['xl: a bad text id', { xl: { uk: { kept: { 'bad id!': 'x' } } } }, 'bad_xl'], ['xl: a non-string', { xl: { uk: { kept: { 'site.title': 5 } } } }, 'bad_xl'], ['xl: an array', { xl: [] }, 'bad_xl'],
+  ['letters: on as a word', { letters: { on: 'yes' } }, 'bad_letters'], ['letters: a numeric word', { letters: { words: { en: [{ ch: 'D', word: 5 }] } } }, 'bad_letters'], ['letters: words not an array', { letters: { words: { en: 'x' } } }, 'bad_letters'], ['letters: a 5-char letter', { letters: { words: { en: [{ ch: 'abcde' }] } } }, 'bad_letters'], ['letters: 25 letters', { letters: { words: { en: Array(25).fill({ ch: 'a' }) } } }, 'bad_letters'],
+  ['owner: 81 chars', { owner: 'x'.repeat(81) }, 'bad_owner'], ['owner: an array', { owner: ['x'] }, 'bad_owner'],
+  ['about.hero: a path', { about: { ...about, hero: '../x' } }, 'bad_about'], ['about.hero: a number', { about: { ...about, hero: 7 } }, 'bad_about']]) {
+  r = await call('PUT', '/api/lists/dmitri', { body: JSON.stringify({ ...cur4, site: { ...cur4.site, ...patch } }), headers: AJ }); ok(r.status === 400 && (await j(r)).error === err, `PUT ${name} → 400 ${err}`);
+}
+r = await call('PUT', '/api/lists/dmitri', { body: JSON.stringify({ ...cur4, site: { ...cur4.site, letters: { on: false }, xl: {}, owner: 'Dmitri', about: { ...about, hero: null } } }), headers: AJ }); ok(r.status === 200, 'PUT with the minimal shapes (letters off, empty xl, a plain owner, hero null) → 200');
+// review fixes: Claude's answer is checked (cut off, refused, no array, nothing usable → 502), letters keep their own words, request shape
+r = await callK('POST', '/api/lists/dmitri/admin/letters', { lang: 'en', name: 'Dmitri' }); const lw2 = await j(r);
+ok(r.status === 200 && JSON.stringify(lw2.words.map(w => w.word)) === JSON.stringify(['Dedicated', 'Mindful', 'Inspiring', '', 'Radiant', 'Imaginative']), 'letters: a skipped letter stays empty, a repeated letter keeps its own word ' + JSON.stringify(lw2.words));
+ok(lastClaude.body.max_tokens === 4000 && lastClaude.body.output_config && lastClaude.body.output_config.effort === 'low' && lastClaude.body.fallbacks === 'default' && lastClaude.headers['anthropic-beta'] === 'server-side-fallback-2026-07-01', 'letters request: low effort, 4000 tokens, refusal fallback ' + JSON.stringify({ mt: lastClaude.body.max_tokens, oc: lastClaude.body.output_config, fb: lastClaude.body.fallbacks }));
+for (const [name, err] of [['Cut', 'cut'], ['Prose', 'bad_output'], ['Obj', 'bad_output'], ['Nil', 'bad_output']]) {
+  r = await callK('POST', '/api/lists/dmitri/admin/letters', { lang: 'en', name }); const e = await j(r);
+  ok(r.status === 502 && e.error === err, `letters when Claude answers "${name}" → 502 ${err} (not 200 with blanks)`);
+}
+r = await callK('POST', '/api/lists/dmitri/admin/translate', { to: 'uk', strings: [{ id: 'site.title', text: 'Hello' }] }); await j(r);
+ok(r.status === 200 && lastClaude.body.max_tokens === 16000 && !lastClaude.body.output_config && lastClaude.body.fallbacks === 'default', 'translate request: 16000 tokens, default effort, refusal fallback');
+r = await callK('POST', '/api/lists/dmitri/admin/translate', { to: 'uk', strings: [{ id: 'site.title', text: 'CUT' }] }); let e2 = await j(r);
+ok(r.status === 502 && e2.error === 'cut', 'translate cut off at max_tokens → 502 cut, not half a list');
+r = await callK('POST', '/api/lists/dmitri/admin/translate', { to: 'uk', strings: [{ id: 'site.title', text: 'REFUSE' }] }); e2 = await j(r);
+ok(r.status === 502 && e2.error === 'refusal', 'translate refused → 502 refusal');
+const cur5 = await j(await call('GET', '/api/lists/dmitri'));
+const bigKept = Object.fromEntries(Array.from({ length: 900 }, (_, i) => [`item.x${i}.name`, 'Brand ' + i]));
+r = await call('PUT', '/api/lists/dmitri', { body: JSON.stringify({ ...cur5, site: { ...cur5.site, xl: { uk: { at: 1, kept: bigKept } } } }), headers: AJ }); ok(r.status === 200, 'PUT with 900 remembered texts → 200 (the 1 MB document cap is the bound)');
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

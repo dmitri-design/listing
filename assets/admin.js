@@ -9,6 +9,52 @@
   let L2 = 'ru';   // the list's second language (site.lang2); English is always the first
   const l2Of = (v) => (v && typeof v === 'object' ? v[L2] : '') ?? '';
   const PACKS = ['ru', 'tr', 'uk', 'de', 'fr', 'es', 'it', 'pt', 'pl', 'nl', 'hi', 'zh', 'ja'];   // the page's own words come ready for these
+  /* after Translate: "done" and "translated" in the language just filled in (the owner may not read it yet, but the friends will) */
+  /* written per language and checked by native-speaker passes (2026-11-04); the language names itself in its own words */
+  const XL_WORDS = {
+    ru: { done: "Готово! Список теперь говорит по-русски.", translated: "Переведено", nothing: "Список и так на русском — переводить нечего." },
+    uk: { done: "Готово! Список тепер говорить українською.", translated: "Перекладено", nothing: "Список і так українською — нічого перекладати." },
+    be: { done: "Гатова! Спіс цяпер размаўляе па-беларуску.", translated: "Перакладзена", nothing: "Спіс і так па-беларуску — няма чаго перакладаць." },
+    kk: { done: "Дайын! Тізім енді қазақша сөйлейді.", translated: "Аударылды", nothing: "Тізім онсыз да қазақша — аударатын ештеңе жоқ." },
+    bg: { done: "Готово! Списъкът вече говори български.", translated: "Преведено", nothing: "Списъкът вече е на български — няма какво да се превежда." },
+    sr: { done: "Готово! Листа сада говори српски.", translated: "Преведено", nothing: "Листа је већ на српском — нема шта да се преводи." },
+    mk: { done: "Готово! Листата сега зборува македонски.", translated: "Преведено", nothing: "Листата е веќе на македонски — нема што да се преведува." },
+    tr: { done: "Tamamdır! Liste artık Türkçe konuşuyor.", translated: "Çevrildi", nothing: "Liste zaten Türkçe — çevrilecek bir şey kalmadı." },
+    az: { done: "Hazırdır! Siyahı artıq azərbaycanca danışır.", translated: "Tərcümə olundu", nothing: "Siyahı onsuz da azərbaycancadır — tərcümə etməyə heç nə qalmayıb." },
+    de: { done: "Fertig! Deine Liste spricht jetzt Deutsch.", translated: "Übersetzt", nothing: "Alles schon auf Deutsch – nichts mehr zu übersetzen." },
+    fr: { done: "Et voilà ! Ta liste parle français maintenant.", translated: "Traduit", nothing: "Tout est déjà en français – plus rien à traduire." },
+    es: { done: "¡Listo! Tu lista ya habla español.", translated: "Traducido", nothing: "Ya está todo en español, no queda nada por traducir." },
+    it: { done: "Fatto! La tua lista ora parla italiano.", translated: "Tradotto", nothing: "È già tutto in italiano – non c'è più niente da tradurre." },
+    pt: { done: "Pronto! A tua lista já fala português.", translated: "Traduzido", nothing: "Já está tudo em português – não há mais nada para traduzir." },
+    nl: { done: "Klaar! Je lijst spreekt nu Nederlands.", translated: "Vertaald", nothing: "Alles is al in het Nederlands – niets meer te vertalen." },
+    sv: { done: "Klart! Din lista pratar nu svenska.", translated: "Översatt", nothing: "Allt är redan på svenska – inget mer att översätta." },
+    da: { done: "Sådan! Din liste taler nu dansk.", translated: "Oversat", nothing: "Alt er allerede på dansk – der er ikke mere at oversætte." },
+    nb: { done: "Ferdig! Lista di snakker nå norsk.", translated: "Oversatt", nothing: "Alt er allerede på norsk – ingenting mer å oversette." },
+    fi: { done: "Valmis! Listasi puhuu nyt suomea.", translated: "Käännetty", nothing: "Kaikki on jo suomeksi – ei enää mitään käännettävää." },
+    pl: { done: "Gotowe! Twoja lista mówi teraz po polsku.", translated: "Przetłumaczono", nothing: "Wszystko jest już po polsku – nie ma czego tłumaczyć." },
+    cs: { done: "Hotovo! Tvůj seznam teď mluví česky.", translated: "Přeloženo", nothing: "Všechno už je v češtině – není co překládat." },
+    sk: { done: "Hotovo! Tvoj zoznam teraz hovorí po slovensky.", translated: "Preložené", nothing: "Všetko už je v slovenčine – nie je čo prekladať." },
+    hu: { done: "Kész! A listád most már tud magyarul.", translated: "Lefordítva", nothing: "Már minden magyarul van – nincs mit lefordítani." },
+    ro: { done: "Gata! Lista ta vorbește acum românește.", translated: "Tradus", nothing: "Totul e deja în română – nu mai e nimic de tradus." },
+    hr: { done: "Gotovo! Tvoj popis sada govori hrvatski.", translated: "Prevedeno", nothing: "Sve je već na hrvatskom – nema više što prevoditi." },
+    sl: { done: "Končano! Tvoj seznam zdaj govori slovensko.", translated: "Prevedeno", nothing: "Vse je že v slovenščini – ni več kaj prevajati." },
+    lt: { done: "Atlikta! Tavo sąrašas dabar kalba lietuviškai.", translated: "Išversta", nothing: "Viskas jau lietuviškai – nebėra ko versti." },
+    lv: { done: "Gatavs! Tavs saraksts tagad runā latviski.", translated: "Iztulkots", nothing: "Viss jau ir latviski – vairs nav ko tulkot." },
+    et: { done: "Valmis! Sinu nimekiri räägib nüüd eesti keelt.", translated: "Tõlgitud", nothing: "Kõik on juba eesti keeles – pole enam midagi tõlkida." },
+    id: { done: "Beres! Daftarmu sekarang berbahasa Indonesia.", translated: "Diterjemahkan", nothing: "Semua sudah dalam bahasa Indonesia, tak ada yang perlu diterjemahkan." },
+    vi: { done: "Xong rồi! Danh sách của bạn giờ đã biết nói tiếng Việt.", translated: "Đã dịch", nothing: "Danh sách đã bằng tiếng Việt rồi, không còn gì để dịch nữa." },
+    el: { done: "Έτοιμο! Η λίστα σου μιλάει πια ελληνικά.", translated: "Μεταφράστηκε", nothing: "Είναι ήδη στα ελληνικά — δεν έμεινε τίποτα για μετάφραση." },
+    ka: { done: "მზადაა! შენი სია უკვე ქართულად ლაპარაკობს.", translated: "თარგმნილია", nothing: "უკვე ქართულადაა — სათარგმნი აღარაფერი დარჩა." },
+    hy: { done: "Պատրա՜ստ է։ Ցուցակդ արդեն հայերեն է խոսում։", translated: "Թարգմանված է", nothing: "Արդեն հայերեն է — թարգմանելու բան չմնաց։" },
+    hi: { done: "हो गया! अब आपकी लिस्ट हिन्दी बोलती है।", translated: "अनुवादित", nothing: "लिस्ट पहले से ही हिन्दी में है — अनुवाद के लिए कुछ नहीं बचा।" },
+    th: { done: "เสร็จแล้ว! ลิสต์ของคุณพูดภาษาไทยได้แล้ว", translated: "แปลแล้ว", nothing: "ลิสต์เป็นภาษาไทยอยู่แล้ว ไม่เหลืออะไรให้แปล" },
+    zh: { done: "搞定！你的清单现在会说中文了。", translated: "已翻译", nothing: "清单已经是中文了，没什么可翻译的。" },
+    ja: { done: "できました！リストが日本語を話せるようになりました。", translated: "翻訳済み", nothing: "もう日本語なので、翻訳するものはありません。" },
+    ko: { done: "다 됐어요! 이제 리스트가 한국어로 말해요.", translated: "번역 완료", nothing: "이미 한국어예요. 더 번역할 게 없어요." },
+    he: { done: "סיימנו! עכשיו הרשימה שלך מדברת עברית.", translated: "תורגם", nothing: "הרשימה כבר בעברית — לא נשאר מה לתרגם." },
+    ar: { done: "تم! قائمتك تتكلم العربية الآن.", translated: "تمت الترجمة", nothing: "القائمة بالعربية أصلاً — لم يبق شيء للترجمة." },
+    fa: { done: "تمام شد! لیستت حالا فارسی حرف می‌زنه.", translated: "ترجمه شد", nothing: "لیست از قبل فارسیه — چیزی برای ترجمه نمونده." },
+  };
   /* EN + optional RU input → a plain string unless RU differs; an untouched value keeps its exact shape */
   /* EN + the second language → a string when nothing else is there, else an object; words in other languages are kept */
   const bi = (en, alt, old) => {
@@ -167,7 +213,7 @@
         ${editing ? `<div class="tbar"><button type="button" class="btn ghost sm sortprice" data-tier="${tid}">Sort by price ↓</button><p class="help">Drag ≡ to reorder, then Done.</p></div>` : ''}
         <ul class="list" data-tier="${tid}">${items.map(it => `<li data-id="${esc(it.id)}"><button type="button" class="row" data-id="${esc(it.id)}">${thumb(it)}
           <span class="rtext"><span class="rname${it.status === 'got' ? ' got' : ''}">${esc(it.name.en)}</span>
-          <span class="rsub">${esc(enOf(it.price))}${it.status === 'got' ? ' <span class="pill got">got it</span>' : ''}${it.status === 'dropped' ? ' <span class="pill dropped">hidden</span>' : ''}${booked.has(it.id) ? ' <span class="pill booked">booked</span>' : ''}</span></span>
+          <span class="rsub">${esc(window.Langs ? Langs.usd(enOf(it.price)) : enOf(it.price))}${it.status === 'got' ? ' <span class="pill got">got it</span>' : ''}${it.status === 'dropped' ? ' <span class="pill dropped">hidden</span>' : ''}${booked.has(it.id) ? ' <span class="pill booked">booked</span>' : ''}</span></span>
           <span class="chev" aria-hidden="true">›</span></button><button type="button" class="grip" aria-label="Reorder ${esc(it.name.en)}: drag, or use the arrow keys">${GRIP}</button></li>`).join('') || '<li class="empty">Nothing here yet</li>'}</ul></section>`;
     }).join('');
     $('#view-items').innerHTML = html;
@@ -346,6 +392,8 @@
     f.elements['about.title.l2'].placeholder = (DOC.ui.aboutLink && typeof DOC.ui.aboutLink === 'object' && DOC.ui.aboutLink[L2]) || '';
     if (fresh || (!$('#aboutRows').children.length && aboutLinks(DOC).length) || JSON.stringify(aboutLinks(prev)) !== JSON.stringify(aboutLinks(DOC))) renderAboutRows(aboutLinks(DOC).map((w, i) => ({ ...w, src: i })));
     renderAboutPhoto();
+    if (!prev || (pab.hero || null) !== (ab.hero || null)) aboutHero = HEROES.includes(ab.hero) ? ab.hero : null;   // a pick not saved yet stays (like typed text) unless the saved one changed
+    renderHeroes();
   }
   $('#textsForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -361,7 +409,7 @@
     }
     /* about the owner: title, story, links; a photo picked here goes up first, under a fresh key, so the live one stays until the list points elsewhere */
     const a0 = aboutOf(doc), pi = aboutImage;
-    const about = { title: both(a0.title, f.elements['about.title.en'].value.trim(), f.elements['about.title.l2'].value.trim()), text: both(a0.text, f.elements['about.text.en'].value.trim(), f.elements['about.text.l2'].value.trim()), photo: aboutGone ? null : (typeof a0.photo === 'string' && a0.photo) || null, links: readAbout() };
+    const about = { title: both(a0.title, f.elements['about.title.en'].value.trim(), f.elements['about.title.l2'].value.trim()), text: both(a0.text, f.elements['about.text.en'].value.trim(), f.elements['about.text.l2'].value.trim()), photo: aboutGone ? null : (typeof a0.photo === 'string' && a0.photo) || null, hero: aboutHero, links: readAbout() };
     if (pi) {
       if (!pi.src) {
         const key = `about-${Date.now().toString(36)}`, btn = $('#textsSave');
@@ -428,6 +476,13 @@
   }
   $('#aboutRemove').addEventListener('click', () => { if (aboutImage && aboutImage.src) dropUpload(aboutImage.src); aboutImage = null; aboutGone = true; renderAboutPhoto(); snd('toggle.off'); });
   function resetAbout() { if (aboutImage && aboutImage.src) dropUpload(aboutImage.src); aboutImage = null; aboutGone = false; }
+  /* the drawing in the sheet's corner: one of the page's own (img/hero), or none */
+  const HEROES = ['batman', 'cat-wine', 'cat-cool', 'duck', 'pearl', 'catman'];
+  let aboutHero = null;
+  function renderHeroes() {
+    $('#heroPick').innerHTML = ['', ...HEROES].map(id => { const on = (aboutHero || '') === id; return `<button type="button" class="hero${on ? ' on' : ''}" data-hero="${id}" aria-pressed="${on}" aria-label="${id ? esc(id) : 'No drawing'}">${id ? `<img src="img/hero/${id}.webp" alt="" loading="lazy">` : '<span>None</span>'}</button>`; }).join('');
+  }
+  $('#heroPick').addEventListener('click', (e) => { const b = e.target.closest('[data-hero]'); if (!b) return; aboutHero = b.dataset.hero || null; renderHeroes(); snd(aboutHero ? 'toggle.on' : 'toggle.off'); });
 
   /* ---------- look: the wall behind the cards, one per room (theme) ---------- */
   const SCENES = [{ id: 'aurora', name: 'Aurora' }, { id: 'swirl', name: 'Swirl' }, { id: 'shift', name: 'Shift' }, { id: 'coalesce', name: 'Coalesce' }, { id: 'pipeline', name: 'Pipeline' }];
@@ -582,7 +637,7 @@
   /* ---------- setup: second language, second currency, countries ---------- */
   let SETUP_MARKETS = null, setupBase = '';
   /* what the Setup form shows, as one string: the sticky Save shows while it differs from the saved list */
-  const setupSnap = () => { const f = $('#setupForm'); return JSON.stringify([f.elements.lang2.value, f.elements.currency.value, String(f.elements.rate.value).trim(), SETUP_MARKETS]); };
+  const setupSnap = () => { const f = $('#setupForm'); return JSON.stringify([f.elements.lang2.value, f.elements.currency.value, String(f.elements.rate.value).trim(), SETUP_MARKETS, LETTERS]); };
   const setupDirty = () => !!DOC && !!SETUP_MARKETS && setupSnap() !== setupBase;
   function markSetup() { $('#setupActions').hidden = !setupDirty(); syncXl(); }
   /* the Translate button names the language picked above at once; a pick not saved yet is saved first when it is tapped */
@@ -602,8 +657,86 @@
     f.elements.rate.value = DOC.site.rate || '';
     SETUP_MARKETS = markets();
     renderMarkets();
+    LETTERS = lettersFrom(DOC, L2); renderLetterSets();
     setupBase = setupSnap(); markSetup();
   }
+  /* a new second language brings its own money and today's rate (either can still be changed), and its own set of letters;
+     the rate box is emptied only when the money actually changes (a stale rate for another currency would show wrong prices) */
+  $('#lang2Sel').addEventListener('change', () => {
+    const f = $('#setupForm'), to = f.elements.lang2.value, cur = window.Langs && Langs.LANG_CUR[to];
+    if (cur && f.elements.currency.value !== cur) { f.elements.currency.value = cur; f.elements.rate.value = ''; fetchRate('soft'); }
+    else if (cur && !f.elements.rate.value.trim()) fetchRate('soft');
+    if (LETTERS) { retargetLetters(to); renderLetterSets(); }
+  });
+  /* ---------- the owner's name, letter by letter (site.letters + site.owner): a draft per language, saved with the setup ---------- */
+  let LETTERS = null;   // { l2, on, names: { en, <l2> }, words: { en: [{ ch, word }], <l2>: [...] } }
+  const letterChars = (name) => [...String(name || '')].filter(c => /\p{L}/u.test(c));
+  /* the name up to its 24th letter (the page shows at most 24 keys; the Worker refuses more) */
+  const cut24 = (name) => { let n = 0, out = ''; for (const c of String(name || '')) { if (/\p{L}/u.test(c)) { if (n === 24) break; n++; } out += c; } return out.trim(); };
+  /* rows always follow the name (24 letters at most); a stored word stays where its letter still sits at that position */
+  const rowsFor = (name, stored) => letterChars(name).slice(0, 24).map((ch, i) => ({ ch, word: stored && stored[i] && typeof stored[i].ch === 'string' && stored[i].ch.toLowerCase() === ch.toLowerCase() ? String(stored[i].word || '') : '' }));
+  const ownerName = (doc, k) => { const o = doc.site.owner; return String(o && typeof o === 'object' ? (o[k] ?? '') : (k === 'en' ? (o ?? '') : '')); };
+  function lettersFrom(doc, l2) {
+    const l = doc.site.letters && typeof doc.site.letters === 'object' ? doc.site.letters : {}, w = l.words && typeof l.words === 'object' ? l.words : {};
+    return { l2, on: !!l.on, names: { en: ownerName(doc, 'en'), [l2]: ownerName(doc, l2) }, words: { en: rowsFor(ownerName(doc, 'en'), w.en), [l2]: rowsFor(ownerName(doc, l2), w[l2]) } };
+  }
+  function retargetLetters(to) {   // the second language picked above (not saved yet) shows its own name and words
+    const fresh = lettersFrom(DOC, to);
+    LETTERS = { l2: to, on: LETTERS.on, names: { en: LETTERS.names.en, [to]: LETTERS.names[to] ?? fresh.names[to] }, words: { en: LETTERS.words.en, [to]: LETTERS.words[to] || fresh.words[to] } };
+  }
+  const suggesting = new Set();   // languages whose ✨ request is in flight: a redraw keeps their button busy
+  /* under a set: what keeps it off the page (a letter without its word) and the 24-letter cap */
+  const lnote = (k) => {
+    const rows = LETTERS.words[k] || [], out = [];
+    if (letterChars(LETTERS.names[k]).length > 24) out.push('Only the first 24 letters become keys.');
+    if (rows.length && rows.some(r => !String(r.word || '').trim())) out.push(k === 'en' ? 'Every letter needs a word before the keys show on the page.' : 'Every letter needs a word before this set shows; until then the page uses the English one.');
+    return out.join(' ');
+  };
+  const lrowsHTML = (k) => (LETTERS.words[k] || []).map((r, i) => `<div class="lrow"><b>${esc(r.ch.toUpperCase())}</b><input type="text" value="${esc(r.word)}" data-lword="${esc(k)}" data-i="${i}" placeholder="a word for ${esc(r.ch.toUpperCase())}"${k !== 'en' ? ' lang="' + esc(k) + '" data-l2-input' : ''}></div>`).join('') || '<p class="lempty">Type the name first.</p>';
+  function renderLetterSets() {
+    if (!LETTERS) return;
+    $('#lettersOn').checked = LETTERS.on;
+    const info = (k) => k === 'en' ? 'English' : (window.Langs ? Langs.info(k).name : k.toUpperCase());
+    $('#lettersSets').innerHTML = ['en', LETTERS.l2].map(k => `<div class="lset-ed" data-lang="${esc(k)}">
+        <div class="lhead"><label class="fld"><span>Name · ${esc(info(k))}</span><input type="text" value="${esc(LETTERS.names[k] || '')}" data-lname="${esc(k)}" autocapitalize="words"${k !== 'en' ? ' lang="' + esc(k) + '" data-l2-input' : ''}></label><button type="button" class="btn ghost sm" data-lsuggest="${esc(k)}"${suggesting.has(k) ? ' disabled' : ''}>${suggesting.has(k) ? 'Thinking…' : '✨ Suggest words'}</button></div>
+        <div class="lrows">${lrowsHTML(k)}</div><p class="help lnote" data-lnote="${esc(k)}">${esc(lnote(k))}</p>
+      </div>`).join('');
+    $('#lettersSets').hidden = !LETTERS.on;
+  }
+  $('#lettersOn').addEventListener('change', (e) => { if (!LETTERS) return; LETTERS.on = e.target.checked; renderLetterSets(); snd(LETTERS.on ? 'toggle.on' : 'toggle.off'); });
+  $('#lettersSets').addEventListener('input', (e) => {
+    const t = e.target; if (!LETTERS) return;
+    const k = t.dataset.lname || t.dataset.lword; if (!k || !LETTERS.words[k]) return;
+    if (t.dataset.lname) { LETTERS.names[k] = t.value; LETTERS.words[k] = rowsFor(t.value, LETTERS.words[k]); $(`.lset-ed[data-lang="${CSS.escape(k)}"] .lrows`).innerHTML = lrowsHTML(k); }
+    if (t.dataset.lword) { const r = LETTERS.words[k][+t.dataset.i]; if (r) r.word = t.value; }
+    const note = $(`[data-lnote="${CSS.escape(k)}"]`); if (note) note.textContent = lnote(k);
+  });
+  /* ✨: Claude gives one kind word per letter of the name (the Worker's letters endpoint); the rows take them, edit as you like.
+     null when nothing usable came back (said in a toast unless quiet: Translate reports in its own words) */
+  async function suggestWords(lang, name, quiet) {
+    const nm = cut24(name);
+    const r = await fetch(`${API}/api/lists/${LIST}/admin/letters`, { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ lang, name: nm }), signal: giveUp(60000) }).catch(() => null);
+    const j = r && r.ok ? await r.json().catch(() => null) : null;
+    const rows = j && Array.isArray(j.words) ? rowsFor(nm, j.words) : null;
+    if (rows && rows.some(w => String(w.word || '').trim())) return rows;
+    if (!quiet) { toast(!r ? 'Could not get the words. Check the connection.' : r.status === 503 ? 'No translation key on the API yet' : r.status === 401 ? 'Password rejected' : r.status === 400 ? 'That name has no letters to use' : 'Claude sent no words this time. Try again.', true); snd('state.error'); }
+    return null;
+  }
+  $('#lettersSets').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-lsuggest]'); if (!b || !LETTERS) return;
+    const k = b.dataset.lsuggest, name = String(LETTERS.names[k] ?? '').trim();
+    if (suggesting.has(k)) return;
+    if (!letterChars(name).length) { toast('Type the name first', true); return; }
+    suggesting.add(k); b.disabled = true; b.textContent = 'Thinking…';
+    let words = null;
+    try { words = await suggestWords(k, name); } finally { suggesting.delete(k); }
+    const nb = $(`[data-lsuggest="${CSS.escape(k)}"]`); if (nb) { nb.disabled = false; nb.textContent = '✨ Suggest words'; }
+    /* the set may be gone (another language picked) or its name changed while Claude was thinking: the words are not for it then */
+    if (!words || !LETTERS || (k !== 'en' && k !== LETTERS.l2) || String(LETTERS.names[k] ?? '').trim() !== name) return;
+    const old = LETTERS.words[k] || [];
+    LETTERS.words[k] = words.map((w, i) => w.word ? w : { ch: w.ch, word: old[i] && old[i].ch === w.ch ? old[i].word : '' });   // a letter Claude left out keeps what was typed
+    renderLetterSets(); markSetup(); snd('ui.confirm');
+  });
   function renderMarkets() {
     $('#marketRows').innerHTML = SETUP_MARKETS.map(c => `<div class="mrow"><span>${Langs.flag(c)} ${esc(Langs.regionName(c, 'en'))}</span><button type="button" class="btn ghost sm" data-mx="${c}" aria-label="Remove ${esc(Langs.regionName(c, 'en'))}">✕</button></div>`).join('');
     const left = Langs.COUNTRIES.filter(c => !SETUP_MARKETS.includes(c));
@@ -612,6 +745,7 @@
   }
   /* today's rate for the chosen currency (typed values always win; a fetch only fills the box) */
   let rateTok = 0;   // a fetch that lands after the form was reset (Discard, a save) or the currency changed again is dropped
+  /* quiet: no sound on success (a pick, not a tap); 'soft': no sound on success, but a failure is still said (the box stays empty) */
   async function fetchRate(quiet) {
     const f = $('#setupForm'), cur = f.elements.currency.value; if (!cur || !window.Langs) return;
     const b = $('#rateFetch'), tok = ++rateTok; b.disabled = true;
@@ -620,48 +754,128 @@
       const v = r.usd[cur.toLowerCase()]; if (!v) throw new Error('no ' + cur);
       f.elements.rate.value = String(+v.toFixed(v < 2 ? 4 : 2)); $('#rateHelp').textContent = `1 USD = ${f.elements.rate.value} ${cur}, as of ${r.date}. Typed values win; ↻ refreshes.`; markSetup(); if (!quiet) snd('toggle.on');
     }
-    catch (e) { if (!quiet && tok === rateTok) { toast("Couldn't fetch today's rate. Type it in.", true); snd('state.error'); } }
+    catch (e) { if ((!quiet || quiet === 'soft') && tok === rateTok) { toast("Couldn't fetch today's rate. Type it in.", true); snd('state.error'); } }
     finally { b.disabled = false; }
   }
   $('#rateFetch').addEventListener('click', () => fetchRate(false));
   $('#curSel').addEventListener('change', () => { const f = $('#setupForm'); if (f.elements.currency.value && !f.elements.rate.value.trim()) fetchRate(true); });
   /* translate: every owner text still missing in the second language goes to the Worker, which asks Claude; nothing written is touched */
-  function xlStrings(doc, to) {
-    const out = [], add = (id, v) => { if (!v || typeof v !== 'object' || !v.en) return; if (v[to] && v[to] !== v.en) return; out.push({ id, text: v.en }); };
-    for (const k of ['title', 'brand', 'tagline', 'legend', 'footer', 'meta']) add('site.' + k, doc.site[k]);
+  /* every owner text the page shows, as { id, text: the English }; xlStrings keeps the ones still missing in the target language */
+  function xlAll(doc) {
+    const out = [], add = (id, v) => { if (v && typeof v === 'object' && v.en) out.push({ id, text: v.en, v }); };
+    for (const k of ['title', 'brand', 'tagline', 'legend', 'footer', 'meta', 'owner']) add('site.' + k, doc.site[k]);
     const ab = aboutOf(doc); add('site.about.title', ab.title); add('site.about.text', ab.text); aboutLinks(doc).forEach((l, n) => add(`site.about.link.${n}`, l.t));
     doc.tiers.forEach((tr, i) => ['name', 'short', 'range', 'blurb'].forEach(k => add(`tier.${i}.${k}`, tr[k])));
     for (const [k, v] of Object.entries(doc.ui)) if (!/^[a-z]{2}$/.test(k)) add('ui.' + k, v);   // the page's own words too (a language without a ready pack); never the old region keys
     doc.items.forEach(it => { ['name', 'desc', 'note'].forEach(k => add(`item.${it.id}.${k}`, it[k])); (it.where || []).forEach((w, n) => add(`item.${it.id}.where.${n}`, w.t)); });
     return out;
   }
-  function xlApply(doc, to, out) {
-    let n = 0;
+  const xlKept = (doc, to) => (doc.site.xl && doc.site.xl[to] && doc.site.xl[to].kept && typeof doc.site.xl[to].kept === 'object') ? doc.site.xl[to].kept : {};
+  /* missing: no text in that language, or the English copied in by the editor — unless an earlier run learned that this English IS the word in that language (a brand, a shop) */
+  function xlStrings(doc, to) {
+    const kept = xlKept(doc, to);
+    return xlAll(doc).filter(({ id, text, v }) => !(v[to] && v[to] !== v.en) && kept[id] !== text).map(({ id, text }) => ({ id, text }));
+  }
+  /* sent: id → the English that went to Claude. A text whose English changed meanwhile (edited while Claude worked) is left alone */
+  function xlApply(doc, to, out, sent) {
+    let n = 0; const same = {};
     for (const { id, text } of out) {
+      if (sent && !sent.has(id)) continue;
       const p = String(id).split('.'); let o = null;
       if (p[0] === 'site' && p[1] === 'about') { const ab = aboutOf(doc); o = p[2] === 'link' ? (aboutLinks(doc)[+p[3]] || {}).t : ab[p[2]]; }
       else if (p[0] === 'site') o = doc.site[p[1]]; else if (p[0] === 'ui') o = doc.ui[p[1]]; else if (p[0] === 'tier') o = doc.tiers[+p[1]] && doc.tiers[+p[1]][p[2]];
       else if (p[0] === 'item') { const it = doc.items.find(i => i.id === p[1]); if (!it) continue; o = p[2] === 'where' ? (it.where && it.where[+p[3]] && it.where[+p[3]].t) : it[p[2]]; }
-      if (o && typeof o === 'object' && (!o[to] || o[to] === o.en) && typeof text === 'string' && text.trim()) { o[to] = text.trim(); n++; }
+      if (o && typeof o === 'object' && (!sent || o.en === sent.get(id)) && (!o[to] || o[to] === o.en) && typeof text === 'string' && text.trim()) { o[to] = id === 'site.owner' ? text.trim().slice(0, 80) : text.trim(); n++; if (o[to] === o.en) same[id] = o.en; }
     }
+    /* what came back as the English itself (brand names, shop names, model numbers) is remembered, so the next run leaves it out;
+       an entry is dropped once its English changes */
+    const old = xlKept(doc, to), kept = {};
+    for (const { id, text } of xlAll(doc)) if (same[id] === text || old[id] === text) kept[id] = text;
+    const xl = doc.site.xl && typeof doc.site.xl === 'object' && !Array.isArray(doc.site.xl) ? doc.site.xl : {};
+    xl[to] = { at: Math.floor(Date.now() / 1000), kept }; doc.site.xl = xl;
     return n;
   }
+  /* the Translate button's states: a pill → a circle with a ring (Claude is working) → the pill again, saying "translated" in that language → the pill as it was */
+  const xlBtn = $('#xlBtn'), xlLbl = $('.xl-lbl', xlBtn);
+  let xlTimer = 0, xlRestT = 0;   // xlRestT: the pill going back to rest after "translated ✓" (a new run cancels it)
+  function xlState(state, label) {
+    clearTimeout(xlTimer); clearTimeout(xlRestT);
+    xlBtn.classList.remove('is-loading', 'is-done', 'shake');
+    if (state === 'loading') xlBtn.classList.add('is-loading'); else if (state === 'done') xlBtn.classList.add('is-done');
+    if (label != null) xlLbl.innerHTML = label;
+    xlBtn.disabled = state === 'loading';
+  }
+  const xlRest = () => { xlState('', 'Translate the list into <b data-l2-name></b>'); syncXl(); };
+  const wait = (ms) => new Promise(res => setTimeout(res, ms));
+  const xlWords = (to) => XL_WORDS[to] || null;
+  /* "Done!": a sheet with the check, a line in the language just filled in, and the count; quiet = nothing was left to translate */
+  const xlDoneD = $('#xlDone');
+  function openXlDone(to, n, extra, quiet) {
+    const w = xlWords(to), name = Langs.info(to).name;
+    xlDoneD.classList.toggle('quiet', !!quiet);
+    $('#xlDoneTitle').textContent = quiet ? 'Already there' : 'Done!';
+    const nat = $('#xlDoneNative'); nat.textContent = w ? (quiet ? w.nothing : w.done) : ''; nat.hidden = !w; nat.setAttribute('lang', to); if (window.Langs && Langs.info(to).rtl) nat.dir = 'rtl'; else nat.removeAttribute('dir');
+    $('#xlDoneText').textContent = quiet ? `Everything already has a ${name} version — nothing was sent, nothing was spent.`
+      : n ? `${n} ${n === 1 ? 'text' : 'texts'} now in ${name}${extra ? ` and words for the ${extra} letters of your name` : ''}. Review them in Items and Texts.`
+      : `Words for the ${extra} letters of your name are in. See them in Setup.`;
+    $('#xlDoneOk').textContent = quiet ? 'OK' : 'Nice';
+    if (!xlDoneD.open) xlDoneD.showModal();
+    snd(quiet ? 'toggle.on' : 'toast.in');
+  }
+  $('#xlDoneOk').addEventListener('click', () => xlDoneD.close());
+  xlDoneD.addEventListener('click', (e) => { if (e.target === xlDoneD) xlDoneD.close(); });
+  /* the name keys in that language still need their words: keys on and no word there yet */
+  const lettersNeed = (doc, to) => { const lt = doc.site.letters; return !!(lt && typeof lt === 'object' && lt.on) && !(Array.isArray(lt.words && lt.words[to]) && lt.words[to].some(w => w && String(w.word || '').trim())); };
+  let xlBusy = false;   // one run at a time, also while the setup save before it is still going (no circle yet)
   $('#xlBtn').addEventListener('click', async () => {
+    if (xlBusy) return;
     if (saving) { toast('Still saving…'); return; }
-    if (setupDirty() && !await saveSetup()) return;   // the language picked above becomes the list's second language first
-    const to = L2, doc = JSON.parse(JSON.stringify(DOC)), strings = xlStrings(doc, to), help = $('#xlHelp'), b = $('#xlBtn');
-    if (!strings.length) { help.textContent = `Everything already has a ${Langs.info(to).name} version.`; toast('Nothing left to translate'); return; }
-    b.disabled = true; help.textContent = `Translating ${strings.length} texts…`;
-    const r = await fetch(`${API}/api/lists/${LIST}/admin/translate`, { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ to, strings }), signal: giveUp(120000) }).catch(() => null);
-    const jr = r && r.ok ? await r.json().catch(() => null) : null;
-    b.disabled = false;
-    if (!jr) {
-      const why = r && r.status === 503 ? 'The API has no translation key yet. On the Mac: npx wrangler secret put ANTHROPIC_API_KEY, then node tools/deploy-api.mjs.' : r && r.status === 401 ? 'Password rejected' : 'Translation failed. Check the connection and try again.';
-      help.textContent = why; toast(r && r.status === 503 ? 'No translation key on the API yet' : 'Translation failed', true); snd('state.error'); return;
-    }
-    const n = xlApply(doc, to, jr.out || []);
-    if (await save(doc, `Translated ${n} texts`)) { help.textContent = `Done: ${n} texts now in ${Langs.info(to).name}. Review them in Items and Texts.`; renderAll(); }
+    xlBusy = true;
+    try { await translateList(); } finally { xlBusy = false; }
   });
+  async function translateList() {
+    if (setupDirty() && !await saveSetup()) return;   // the language picked above becomes the list's second language first
+    const to = L2, help = $('#xlHelp'), strings = xlStrings(DOC, to), sent = new Map(strings.map(x => [x.id, x.text])), needLetters = lettersNeed(DOC, to);
+    if (!strings.length && !needLetters) { help.textContent = `Everything already has a ${Langs.info(to).name} version.`; openXlDone(to, 0, 0, true); return; }   // nothing goes to the API
+    xlState('loading'); help.textContent = strings.length ? `Translating ${strings.length} texts…` : 'Finding words for the letters of your name…';
+    const t0 = performance.now();
+    const fail = async (why, short) => {
+      await wait(Math.max(0, 900 - (performance.now() - t0)));
+      xlState(''); syncXl(); xlBtn.classList.add('shake'); xlTimer = setTimeout(() => xlBtn.classList.remove('shake'), 500);
+      help.textContent = why; toast(short, true); snd('state.error');
+    };
+    let out = [];
+    if (strings.length) {
+      const r = await fetch(`${API}/api/lists/${LIST}/admin/translate`, { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ to, strings }), signal: giveUp(150000) }).catch(() => null);
+      const jr = r && r.ok ? await r.json().catch(() => null) : null;
+      if (!jr || !Array.isArray(jr.out) || !jr.out.length) {
+        return fail(r && r.status === 503 ? 'The API has no translation key yet. On the Mac: npx wrangler secret put ANTHROPIC_API_KEY, then node tools/deploy-api.mjs.' : r && r.status === 401 ? 'Password rejected'
+          : r && (r.status === 502 || r.ok) ? 'Claude could not finish the translation this time. Nothing was changed; try again in a minute.' : 'Translation failed. Check the connection and try again.',
+          r && r.status === 503 ? 'No translation key on the API yet' : 'Translation failed');
+      }
+      out = jr.out;
+    }
+    /* the name's letters in that language too, spelled the way the translation wrote the name */
+    let words = null;
+    if (needLetters) {
+      const o = out.find(x => x && x.id === 'site.owner' && typeof x.text === 'string' && x.text.trim());
+      const nm = (o ? o.text.trim() : ownerName(DOC, to).trim()) || ownerName(DOC, 'en').trim();
+      if (nm) words = await suggestWords(to, nm, true);
+      if (!words && !strings.length) return fail('Claude sent no words for the letters of your name this time. Try again in a minute.', 'No words this time');
+    }
+    await wait(Math.max(0, 900 - (performance.now() - t0)));   // the circle is a beat, not a flash
+    /* applied to the list as it is now: a save made while Claude worked (an item edited meanwhile) stays */
+    const prev = DOC, doc = JSON.parse(JSON.stringify(DOC)), n = xlApply(doc, to, out, sent);
+    let extra = 0; const lt = doc.site.letters;
+    if (words && lettersNeed(doc, to)) { lt.words = Object.assign({}, lt.words && typeof lt.words === 'object' ? lt.words : {}, { [to]: words }); extra = words.length; }
+    if (!await save(doc, n ? `Translated ${n} texts` : 'Saved')) { xlRest(); return; }
+    const w = xlWords(to);
+    xlState('done', `${esc(w ? w.translated : 'Translated')} ✓`);
+    renderAll(prev);   // what is typed (not saved) in Texts stays; this redraws Setup, which resets the help line: write it after
+    help.textContent = n ? `Done: ${n} texts now in ${Langs.info(to).name}${extra ? ` and ${extra} words for the letters of your name` : ''}. Review them in Items and Texts.` : `Done: words for the ${extra} letters of your name in ${Langs.info(to).name}.`;
+    xlTimer = setTimeout(() => openXlDone(to, n, extra), 700);
+    xlRestT = setTimeout(xlRest, 4500);
+  }
   $('#marketRows').addEventListener('click', (e) => { const b = e.target.closest('[data-mx]'); if (!b) return; SETUP_MARKETS = SETUP_MARKETS.filter(c => c !== b.dataset.mx); renderMarkets(); markSetup(); snd('toggle.off'); });
   $('#marketAddBtn').addEventListener('click', () => { const c = $('#marketAdd').value; if (!c || SETUP_MARKETS.includes(c) || SETUP_MARKETS.length >= 6) return; SETUP_MARKETS.push(c); renderMarkets(); markSetup(); snd('toggle.on'); });
   $('#setupForm').addEventListener('submit', (e) => { e.preventDefault(); saveSetup(); });
@@ -677,6 +891,14 @@
     if (cur) doc.site.currency = cur; else delete doc.site.currency;
     if (rate > 0) doc.site.rate = rate; else delete doc.site.rate;
     doc.site.markets = SETUP_MARKETS.slice(0, 6);
+    if (LETTERS) {
+      const rows = (k) => (LETTERS.words[k] || []).map(r => ({ ch: r.ch, word: String(r.word || '').trim().slice(0, 60) }));
+      const old = doc.site.letters && typeof doc.site.letters === 'object' ? doc.site.letters : {}, l2w = LETTERS.l2 === lang2 ? rows(LETTERS.l2) : rowsFor(ownerName(doc, lang2), (old.words || {})[lang2]);
+      doc.site.letters = { on: LETTERS.on, words: Object.assign({}, old.words && typeof old.words === 'object' ? old.words : {}, { en: rows('en'), [lang2]: l2w }) };
+      const owner = Object.assign(keep(doc.site.owner), { en: String(LETTERS.names.en || '').trim().slice(0, 80) });
+      if (LETTERS.l2 === lang2) { const n = String(LETTERS.names[lang2] || '').trim().slice(0, 80); if (n) owner[lang2] = n; else delete owner[lang2]; }
+      doc.site.owner = owner;
+    }
     const rs = String(f.elements.rate.value).trim();
     if (rs && !(rate > 0 && isFinite(rate))) { toast('Rate must be a number like 34.5', true); snd('state.error'); return false; }
     const missing = Object.values(doc.ui).some(v => v && typeof v === 'object' && !v[lang2]);
@@ -685,8 +907,10 @@
       if (pack) for (const [k, v] of Object.entries(pack)) { if (!doc.ui[k]) continue; if (typeof doc.ui[k] !== 'object') doc.ui[k] = { en: doc.ui[k] }; if (!doc.ui[k][lang2]) doc.ui[k][lang2] = v; }
       else toast(`Could not load the ${lang2.toUpperCase()} words; the page falls back to English`, true);
     }
+    const prev = DOC;
     if (!await save(doc, 'Setup saved')) return false;
-    L2 = lang2; applyL2(); renderAll(); return true;
+    const same = String(prev.site.lang2 || 'ru').toLowerCase() === lang2;
+    L2 = lang2; applyL2(); renderAll(same ? prev : undefined); return true;   // same language: what is typed (not saved) in Texts stays
   }
   /* leaving the Setup tab, Reload or Sign out with unsaved picks asks first */
   async function guardSetup() {
@@ -707,7 +931,8 @@
     $('#edTitle').textContent = isNew ? 'New item' : 'Edit item';
     const v = (k, val) => { form.elements[k].value = val ?? ''; };
     v('name.en', cur.name.en); v('name.l2', cur.name[L2]); v('desc.en', cur.desc.en); v('desc.l2', cur.desc[L2]);
-    v('price.en', enOf(cur.price)); v('price.l2', l2Of(cur.price)); v('id', cur.id);
+    v('price.en', enOf(cur.price)); v('price.l2', l2Of(cur.price) === enOf(cur.price) ? '' : l2Of(cur.price)); v('id', cur.id);
+    form.elements['price.l2'].placeholder = DOC.site.currency && +DOC.site.rate > 0 ? `≈ from USD in ${DOC.site.currency}` : 'same as EN';
     v('note.en', cur.note && cur.note.en); v('note.l2', cur.note && cur.note[L2]);
     $('#priceConv').hidden = !(DOC.site.currency && +DOC.site.rate > 0);
     renderAvail();
@@ -811,8 +1036,10 @@
     it.name = Object.assign(keep(it.name), name, { [L2]: name[L2] || name.en });
     const de = form.elements['desc.en'].value.trim(), d2 = form.elements['desc.l2'].value.trim();
     it.desc = Object.assign(keep(it.desc), { en: de, [L2]: d2 || de });
-    const pe = form.elements['price.en'].value.trim(), pr = form.elements['price.l2'].value.trim();
-    it.price = Object.assign(keep(it.price), { en: pe || pr, [L2]: pr || pe || pr });   // prices in other languages stay
+    const pe = window.Langs ? Langs.usd(form.elements['price.en'].value.trim()) : form.elements['price.en'].value.trim(), pr = form.elements['price.l2'].value.trim();
+    const price = Object.assign(keep(it.price), { en: pe || pr });   // prices typed in other languages stay
+    if (pr && pr !== pe) price[L2] = pr; else delete price[L2];   // nothing typed: the page converts from USD at the rate in Setup
+    it.price = Object.keys(price).length === 1 ? price.en : price;
     const ne = form.elements['note.en'].value.trim(), nr = form.elements['note.l2'].value.trim();
     it.note = Object.assign(keep(it.note), { en: ne, [L2]: nr || ne });
     it.tier = segVal('#tierSeg') || DOC.tiers[0].id;

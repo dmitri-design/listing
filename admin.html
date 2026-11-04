@@ -86,6 +86,7 @@
           <label class="fld"><span>Story · EN</span><textarea name="about.text.en" rows="4" placeholder="A few lines about you. A blank line starts a new paragraph."></textarea></label>
           <label class="fld"><span>Story · <b data-l2>RU</b></span><textarea name="about.text.l2" rows="4" data-l2-input></textarea></label>
           <div class="fld"><span>Links (up to 4)</span><div id="aboutRows"></div><button type="button" class="btn ghost sm" id="aboutAdd">＋ link</button></div>
+          <div class="fld"><span>A drawing in the corner of the sheet</span><div class="heroes" id="heroPick"></div></div>
         </div>
         <details class="words" id="words"><summary>Small words on the page <b id="wordsCount"></b></summary>
           <p class="help">Buttons, labels and messages. Changes show after Save texts. Tier names: the pencil next to a tier in Items.</p>
@@ -99,10 +100,16 @@
       <form id="setupForm" class="form">
         <label class="fld"><span>Second language</span><select name="lang2" id="lang2Sel"></select></label>
         <p class="help">English is always the first language. ✓ = the page's own words (buttons, hints, errors) are already translated; you can tweak them in Texts → Small words.</p>
-        <div class="fld"><button type="button" class="btn ghost" id="xlBtn">Translate the list into <b data-l2-name>Русский</b></button>
+        <div class="fld xl"><button type="button" class="btn ghost xl-btn" id="xlBtn"><span class="xl-spin" aria-hidden="true"></span><span class="xl-lbl">Translate the list into <b data-l2-name>Русский</b></span></button>
           <p class="help" id="xlHelp">Fills in everything still missing in that language: title, lines, tiers, item names, descriptions, notes and shop labels. Nothing already written is touched. Review the result in Items and Texts.</p></div>
         <div class="pair"><label class="fld"><span>Currency for the second price</span><select name="currency" id="curSel"></select></label><label class="fld"><span>1 USD =</span><div class="withbtn"><input name="rate" type="text" inputmode="decimal" placeholder="e.g. 34.5"><button type="button" class="btn ghost sm" id="rateFetch" title="Today's rate">↻</button></div></label></div>
-        <p class="help" id="rateHelp">Pick a currency and ↻ fetches today's rate (you can type your own). On the page, items without a typed second price show one converted from USD; in the editor, ≈ writes it in for you.</p>
+        <p class="help" id="rateHelp">The currency follows the language you pick (rubles for Russian, hryvnias for Ukrainian, euros for German…) and ↻ fetches today's rate; change either if you like. English prices are always USD. On the page, items without a typed second price show one converted from USD; in the editor, ≈ writes it in for you.</p>
+        <div class="fld letters-ed" id="lettersEd">
+          <span>Your name, letter by letter</span>
+          <label class="chk"><input type="checkbox" id="lettersOn"> <span>Show my name as keys at the foot of the page. A tap on a letter shows a word for it.</span></label>
+          <div id="lettersSets"></div>
+          <p class="help">✨ Suggest words asks Claude for one kind word per letter of the name above; edit any of them. Translate fills the second language in too.</p>
+        </div>
         <div class="fld"><span>Countries on the card back</span>
           <div id="marketRows"></div>
           <div class="addrow"><select id="marketAdd" aria-label="Country to add"></select><button type="button" class="btn ghost sm" id="marketAddBtn">＋ Add</button></div>
@@ -207,6 +214,12 @@
         <p class="err" id="tierErr" role="alert" hidden></p>
       </div>
     </form>
+  </dialog>
+
+  <dialog id="xlDone" class="sheet mini done" aria-labelledby="xlDoneTitle">
+    <div class="ask-in"><div class="done-mark" aria-hidden="true"><svg class="done-check" viewBox="0 0 96 96"><path d="M28 50.5 42.5 65 69 34"/></svg></div>
+      <h2 id="xlDoneTitle"></h2><p class="done-native" id="xlDoneNative" hidden></p><p id="xlDoneText"></p>
+      <div class="ask-btns"><button type="button" class="btn primary" id="xlDoneOk">Nice</button></div></div>
   </dialog>
 
   <dialog id="ask" class="sheet mini" aria-labelledby="askTitle">

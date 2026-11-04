@@ -45,12 +45,14 @@ const MARK = { y: '✓', g: '~', n: '✗' };
 /* the markets a list marks availability for (site.markets, ISO codes, EU as a block; up to six fit a card back) */
 const MARKETS = () => { const m = DATA && DATA.site && Array.isArray(DATA.site.markets) && DATA.site.markets.length ? DATA.site.markets : ['EU', 'TR', 'RU']; return m.map(c => String(c).toUpperCase()).filter(c => /^[A-Z]{2}$/.test(c)).slice(0, 6); };
 const availOf = (it, code) => (it.avail && (it.avail[code] ?? it.avail[code.toLowerCase()])) || 'n';
-/* the price in both languages: the second one as typed, else converted from the USD price at the list's rate (Setup) */
+/* the price in both languages: USD on the English side (a bare "15" reads "$15"); the second one as typed, else converted from the
+   USD price at the list's rate (Setup). A second price that merely repeats the English one (the editor used to copy it) is not "typed". */
 const priceOf = (it) => {
-  const p = it.price, en = pick(p, 'en'), typed = p && typeof p === 'object' ? (p[L2] || '') : '';
+  const p = it.price, raw = pick(p, 'en'), en = window.Langs ? Langs.usd(raw) : raw;
+  const alt = p && typeof p === 'object' ? String(p[L2] || '').trim() : '', typed = alt && alt !== raw && alt !== en ? alt : '';
   if (typed) return { en, [L2]: typed };
   const site = DATA && DATA.site;
-  if (site && site.currency && +site.rate > 0 && window.Langs) { const usd = Langs.priceUSD(en); if (usd != null) return { en, [L2]: '≈ ' + Langs.money(usd * site.rate, site.currency, L2) }; }
+  if (site && site.currency && site.currency !== 'USD' && +site.rate > 0 && window.Langs && Langs.isUSD(en)) { const usd = Langs.priceUSD(en); if (usd != null) return { en, [L2]: '≈ ' + Langs.money(usd * site.rate, site.currency, L2) }; }   // "€120" is not 120 dollars
   return { en, [L2]: en };
 };
 const regionLabel = (code) => ({ en: window.Langs ? Langs.regionName(code, 'en') : code, [L2]: window.Langs ? Langs.regionName(code, L2) : code });
@@ -104,6 +106,7 @@ function setLang(l, save) {
   if (alt) preloadFonts(L2);
   if (save) { try { localStorage.setItem('wl-lang', alt ? 'alt' : 'en'); } catch (e) {} }
   renderGate();
+  fitLetters();   // the set now on screen
 }
 /* the second language's font subset (Cyrillic or Latin-extended); other scripts use the phone's own font */
 function preloadFonts(code) {
@@ -130,15 +133,17 @@ function setL2(code) {
 let lang = 'en';
 try { const st = localStorage.getItem('wl-lang'); lang = st ? (st === 'en' ? 'en' : 'alt') : ((navigator.language || '').toLowerCase().startsWith('ru') ? 'alt' : 'en'); } catch (e) {}
 setLang(lang, false);
-const switchLang = () => { const l = L() === 'en' ? 'alt' : 'en'; setLang(l, true); snd(l !== 'en' ? 'toggle.on' : 'toggle.off', 'signature'); };
+const switchLang = () => { const l = L() === 'en' ? 'alt' : 'en'; const h = $('#title'); if (h) h.classList.remove('still'); setLang(l, true); snd(l !== 'en' ? 'toggle.on' : 'toggle.off', 'signature'); };   // the side coming in rises, as on any switch
 $('#langToggle') && $('#langToggle').addEventListener('click', switchLang);
 document.querySelectorAll('.lsw-lbl').forEach(b => b.addEventListener('click', () => { if ((b.dataset.lang === 'alt') !== (L() !== 'en')) switchLang(); }));
 
 /* ---------- title letters: one span per letter, grouped per word (.w, nowrap) so a line only breaks between words ---------- */
-function renderTitle(title) {
+/* quiet (a late live list): the words are redrawn in place, with no second rise out of nothing */
+function renderTitle(title, quiet) {
   const h = $('#title');
-  const key = JSON.stringify(title); if (key === renderTitle.key) return;   // same title: don't replay the letters
+  const key = JSON.stringify([title.en, title[L2] ?? title.en, L2]); if (key === renderTitle.key) return;   // same words: don't replay the letters
   renderTitle.key = key;
+  h.classList.toggle('still', !!(quiet && renderTitle.drawn)); renderTitle.drawn = true;
   /* whole = one animated piece per word, for scripts that must not be cut into letters (joined Arabic, Hindi matras, CJK) */
   const mk = (txt, cls, whole) => {
     let i = 0, out = '', w = '';
@@ -163,8 +168,8 @@ function renderTitle(title) {
 }
 
 /* ---------- site strings (everything editable lives in data/items.json) ---------- */
-function renderSite(site) {
-  renderTitle(site.title);
+function renderSite(site, quiet) {
+  renderTitle(site.title, quiet);
   $('.brand').innerHTML = t(site.brand);
   $('.tag').innerHTML = t(site.tagline);
   $('.legend').innerHTML = t(site.legend, true);
@@ -356,7 +361,7 @@ function reveal() {
 }
 window.addEventListener('scroll', reveal, { passive: true });
 window.addEventListener('resize', reveal, { passive: true });
-let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => layout(false), 180); });
+let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { layout(false); fitLetters(); }, 180); });
 
 /* ---------- wire: a damped spring per row, kicked by page scroll and by swiping a row ---------- */
 const SW = { rows: [], raf: 0, prev: 0, lastY: window.scrollY, lastT: 0, io: null, cio: null };
@@ -751,11 +756,13 @@ function closeZoom() { if (zoomD && zoomD.open) zoomD.close(); }
    photo is fetched only then; a blank line in the story starts a new paragraph; links open in a new tab ---------- */
 const paras = (txt) => String(txt ?? '').split(/\n\s*\n/).map(p => p.trim()).filter(Boolean).map(p => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('');
 const tBlock = (v) => { const en = String(pick(v, 'en')), alt = String(pick(v, 'alt')).trim() || en; return `<div class="l-en" lang="en">${paras(en)}</div><div class="l-2" lang="${L2}"${RTL() ? ' dir="rtl"' : ''}>${paras(alt)}</div>`; };
+/* the drawings the owner can put in the sheet's corner (admin → Texts → About the owner): img/hero/<id>.webp, black ink on nothing */
+const HEROES = ['batman', 'cat-wine', 'cat-cool', 'duck', 'pearl', 'catman'];
 function ensureAbout() {
   if (aboutD) return aboutD;
   aboutD = document.createElement('dialog'); aboutD.className = 'sheet about'; aboutD.setAttribute('aria-labelledby', 'about-title');
-  aboutD.innerHTML = `<div class="sheet-in"><div class="sheet-grab"><div class="grabber" aria-hidden="true"></div>
-    <div class="sheet-top"><span aria-hidden="true"></span><span aria-hidden="true"></span><button type="button" class="sheet-cancel about-x">${t(DATA.ui.close || CLOSE0)}</button></div></div>
+  aboutD.innerHTML = `<div class="sheet-in"><div class="sheet-grab"><div class="grabber" aria-hidden="true"></div></div>
+    <button type="button" class="about-x"><span class="sr">${t(DATA.ui.close || CLOSE0)}</span><span aria-hidden="true">✕</span></button>
     <div class="about-body"></div></div>`;
   app.appendChild(aboutD);
   aboutD.querySelector('.about-x').addEventListener('click', closeAbout);
@@ -766,13 +773,16 @@ function ensureAbout() {
 }
 function fillAbout() {
   const a = aboutOf(); if (!a || !aboutD) return;
-  const photo = safeUrl(a.photo);
+  const photo = safeUrl(a.photo), hero = HEROES.includes(a.hero) ? a.hero : '';
   const links = (Array.isArray(a.links) ? a.links : []).slice(0, 4).map(l => {
     const u = l && safeUrl(l.u); if (!u) return '';
     let label = l.t; if (!String(pick(label, 'en')).trim()) { try { label = new URL(u).hostname.replace(/^www\./, ''); } catch (e) { label = u; } }   // a link without a name shows its site
     return `<li><a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${t(label)}</a></li>`;
   }).join('');
-  aboutD.querySelector('.about-body').innerHTML = `${photo ? `<img class="about-photo" src="${esc(photo)}" alt="" loading="lazy" decoding="async">` : ''}<h2 class="about-title" id="about-title">${t(aboutTitle())}</h2><div class="about-text">${tBlock(a.text)}</div>${links ? `<ul class="about-links">${links}</ul>` : ''}`;
+  aboutD.querySelector('.about-body').innerHTML = `<div class="about-head">${photo ? `<img class="about-photo" src="${esc(photo)}" alt="" loading="lazy" decoding="async">` : ''}<h2 class="about-title" id="about-title">${t(aboutTitle())}</h2></div>
+    <div class="about-text">${tBlock(a.text)}</div>
+    ${hero ? `<div class="about-hero" aria-hidden="true"><img src="img/hero/${hero}.webp" alt="" loading="lazy" decoding="async"></div>` : ''}
+    ${links ? `<hr class="about-rule"><ul class="about-links">${links}</ul>` : ''}`;
 }
 function openAbout() {
   if (!aboutOf()) return;
@@ -781,6 +791,89 @@ function openAbout() {
 }
 function closeAbout() { if (aboutD && aboutD.open) aboutD.close(); }
 $('#aboutLink') && $('#aboutLink').addEventListener('click', openAbout);
+
+/* ---------- the owner's name, letter by letter: keycaps at the foot of the page (site.letters, admin → Setup), after the
+   Velvet UI wordmark: a tile on a slab that sinks 5 px while held (toggle.on on press, toggle.off on release, Signature voice);
+   the card below shows "D - 1/6" and the word, cross-fading and sliding toward the pressed key. One set per language; a language
+   without words borrows the other's. The keyboard works too: Space/Enter on a focused key, or the letter itself anywhere on the page. ---------- */
+const lettersOf = () => { const l = DATA && DATA.site && DATA.site.letters; return l && typeof l === 'object' && l.on && l.words && typeof l.words === 'object' ? l : null; };
+const letterWords = (k) => { const l = lettersOf(), w = l && l.words[k]; return Array.isArray(w) ? w.filter(x => x && typeof x.ch === 'string' && x.ch.trim()).slice(0, 24) : []; };
+const held = new Set();   // keys currently down (pointer or keyboard)
+/* a set shows once every letter has its word: an owner half-way through the rows in admin shows nothing half-done */
+const ready = (w) => w.length > 0 && w.every(x => String(x.word || '').trim());
+function renderLetters() {
+  const el = $('#letters'), foot = el && el.closest('footer'); if (!el) return;
+  held.clear();
+  const en0 = letterWords('en'), alt0 = letterWords(L2), en = ready(en0) ? en0 : [], alt = ready(alt0) ? alt0 : [];
+  const sets = en.length && alt.length ? [{ k: 'en', cls: ' l-en', w: en }, { k: L2, cls: ' l-2', w: alt }] : en.length ? [{ k: 'en', cls: '', w: en }] : alt.length ? [{ k: L2, cls: '', w: alt }] : [];
+  el.hidden = !sets.length; if (foot) foot.classList.toggle('lettered', !!sets.length);
+  el.innerHTML = sets.map(s => {
+    const n = s.w.length, up = (x) => x.ch.trim().toLocaleUpperCase(s.k), low = (x) => x.ch.trim().toLocaleLowerCase(s.k), word = (x) => String(x.word || '').trim();
+    return `<div class="lset${s.cls}" lang="${esc(s.k)}" data-cur="0"${s.k === L2 && RTL() ? ' dir="rtl"' : ''}>
+      <div class="lkeys" role="group" aria-label="${esc(s.w.map(up).join(''))}" style="--n:${n}">${s.w.map((x, i) => `<button type="button" class="lkey" data-i="${i}" aria-label="${esc(up(x))}${word(x) ? ' - ' + esc(word(x)) : ''}">${esc(up(x))}<span class="hint" aria-hidden="true">${esc(low(x))}</span></button>`).join('')}</div>
+      <div class="lcard" aria-live="polite"><div class="llayer active"><p class="lletter">${esc(up(s.w[0]))} - 1/${n}</p><h3>${esc(word(s.w[0]))}</h3></div><div class="llayer"><p class="lletter"></p><h3></h3></div></div></div>`;
+  }).join('');
+  el.querySelectorAll('.lkey').forEach(b => {
+    /* a mouse presses at once, as on the Velvet site. A finger may be starting a scroll: its press counts after 70 ms without
+       moving (as iOS buttons in a scroll view do) or at the lift, whichever comes first; a scroll presses nothing, silently */
+    b.addEventListener('pointerdown', (e) => {
+      e.preventDefault();   // no focus ring from a tap, no text selection
+      if (e.pointerType !== 'touch') { lkeyPress(b); return; }
+      clearTimeout(b._t); b._x = e.clientX; b._y = e.clientY;
+      b._t = setTimeout(() => { b._t = 0; lkeyPress(b); }, 70);
+    });
+    b.addEventListener('pointermove', (e) => { if (b._t && Math.hypot(e.clientX - b._x, e.clientY - b._y) > 8) { clearTimeout(b._t); b._t = 0; } });
+    b.addEventListener('pointerup', () => {
+      if (b._t) { clearTimeout(b._t); b._t = 0; lkeyPress(b); setTimeout(() => lkeyRelease(b), 70); return; }   // a quick tap: down and up, both heard
+      lkeyRelease(b);
+    });
+    b.addEventListener('pointercancel', () => { if (b._t) { clearTimeout(b._t); b._t = 0; return; } lkeyRelease(b); });
+    b.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') lkeyRelease(b); });   // a lifted finger fires pointerleave right after pointerup
+    b.addEventListener('keydown', (e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); lkeyPress(b); } });
+    b.addEventListener('keyup', (e) => { if (e.key === ' ' || e.key === 'Enter') lkeyRelease(b); });
+  });
+  fitLetters();
+}
+/* a key never gets narrower than a thumb (44 px): when the row can't give that, the keys become 44 px and wrap, centred */
+function fitLetters() {
+  document.querySelectorAll('.lkeys').forEach(k => {
+    if (!k.offsetParent) return;   // the other language's set: not on screen
+    k.classList.remove('many');
+    const n = k.children.length, gap = parseFloat(getComputedStyle(k).columnGap) || 0;
+    if (n && k.clientWidth && (k.clientWidth - gap * (n - 1)) / n < 44) k.classList.add('many');
+  });
+}
+function lkeyPress(b) {
+  if (held.has(b)) return;
+  held.add(b); b.classList.add('pressed'); snd('toggle.on', 'signature');
+  const set = b.closest('.lset'), i = +b.dataset.i, cur = +set.dataset.cur;
+  if (i === cur) return;   // the key of the word already shown: the sound, no card change
+  const lang = set.getAttribute('lang') || 'en', words = letterWords(lang), x = words[i]; if (!x) return;
+  const dir = Math.sign(i - cur), dist = 6 + 3 * Math.abs(i - cur);   // the words enter from the side of the key you pressed
+  const layers = set.querySelectorAll('.llayer'), out = set.querySelector('.llayer.active'), inn = out === layers[0] ? layers[1] : layers[0];
+  inn.querySelector('.lletter').textContent = `${x.ch.trim().toLocaleUpperCase(lang)} - ${i + 1}/${words.length}`; inn.querySelector('h3').textContent = String(x.word || '').trim();
+  inn.classList.add('no-transition'); inn.style.setProperty('--from-x', dir * dist + 'px'); void inn.offsetWidth; inn.classList.remove('no-transition');
+  out.style.setProperty('--from-x', -dir * dist + 'px');
+  out.classList.remove('active'); inn.classList.add('active');
+  set.dataset.cur = i;
+}
+function lkeyRelease(b) { if (!held.has(b)) return; held.delete(b); b.classList.remove('pressed'); snd('toggle.off', 'signature'); }
+/* the letters of the name on the keyboard press the keys of the set on screen; a repeated letter alternates between its keys */
+const letterCount = {}, letterDown = {};   // letterDown: the keycap each physical key (e.code) is holding down
+const shownSet = () => [...document.querySelectorAll('.lset')].find(x => x.offsetParent !== null);
+document.addEventListener('keydown', (e) => {
+  if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || !DATA || document.querySelector('dialog[open]')) return;
+  const tg = e.target; if (tg && tg.closest && (tg.closest('input, textarea, select') || tg.isContentEditable)) return;
+  const set = shownSet(); if (!set) return;
+  const k = e.key.toLocaleLowerCase(set.getAttribute('lang') || 'en'), id = e.code || k;
+  if ([...k].length !== 1 || letterDown[id]) return;
+  const keys = [...set.querySelectorAll('.lkey')].filter(b => b.querySelector('.hint').textContent === k); if (!keys.length) return;
+  const b = keys[(letterCount[k] = (letterCount[k] || 0)) % keys.length]; letterCount[k]++;
+  letterDown[id] = b; e.preventDefault(); lkeyPress(b);
+});
+/* released by the same physical key, whatever Shift or the locale makes of its letter in between (Turkish I/ı) */
+document.addEventListener('keyup', (e) => { const set = shownSet(), id = e.code || e.key.toLocaleLowerCase((set && set.getAttribute('lang')) || 'en'), b = letterDown[id]; if (b) { delete letterDown[id]; lkeyRelease(b); } });
+window.addEventListener('blur', () => { for (const b of [...held]) lkeyRelease(b); for (const k in letterDown) delete letterDown[k]; });
 
 /* ---------- data: the repo JSON paints first; when an API is configured, the live list (edited from admin.html) replaces it ---------- */
 const okShape = (d) => d && d.site && Array.isArray(d.tiers) && d.ui && Array.isArray(d.items);
@@ -793,9 +886,10 @@ function apply(d, quiet) {
   LIST = (DATA.site && DATA.site.slug) || 'dmitri';
   API = String((LOCAL && new URLSearchParams(location.search).get('api')) || DATA.site.api || '').replace(/\/+$/, '');
   setL2(String(DATA.site.lang2 || 'ru').toLowerCase());
-  renderSite(DATA.site);
+  renderSite(DATA.site, quiet);
   renderBg();
   renderNav(DATA.tiers);
+  renderLetters();
   layout(true, quiet);
 }
 function fetchLive(api, slug) {

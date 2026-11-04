@@ -48,7 +48,9 @@
     fa: { label: 'FA', name: 'فارسی', script: 'other', rtl: true },
   };
   /* currencies a second price can be shown in (the browser formats them; this is just the menu) */
-  const CURRENCIES = ['EUR', 'GBP', 'TRY', 'RUB', 'UAH', 'KZT', 'BYN', 'GEL', 'AMD', 'AZN', 'PLN', 'CZK', 'HUF', 'RON', 'BGN', 'RSD', 'SEK', 'NOK', 'DKK', 'CHF', 'INR', 'CNY', 'JPY', 'KRW', 'THB', 'VND', 'IDR', 'AED', 'ILS', 'BRL', 'MXN', 'CAD', 'AUD', 'USD'];
+  const CURRENCIES = ['EUR', 'GBP', 'TRY', 'RUB', 'UAH', 'KZT', 'BYN', 'GEL', 'AMD', 'AZN', 'PLN', 'CZK', 'HUF', 'RON', 'BGN', 'RSD', 'SEK', 'NOK', 'DKK', 'CHF', 'INR', 'CNY', 'JPY', 'KRW', 'THB', 'VND', 'IDR', 'AED', 'ILS', 'IRR', 'MKD', 'BRL', 'MXN', 'CAD', 'AUD', 'USD'];
+  /* the money of the place a second language is spoken: picked for the owner when the language changes (Setup); any other can still be chosen */
+  const LANG_CUR = { ru: 'RUB', uk: 'UAH', be: 'BYN', kk: 'KZT', bg: 'BGN', sr: 'RSD', mk: 'MKD', tr: 'TRY', de: 'EUR', fr: 'EUR', es: 'EUR', it: 'EUR', pt: 'EUR', nl: 'EUR', sv: 'SEK', da: 'DKK', nb: 'NOK', fi: 'EUR', pl: 'PLN', cs: 'CZK', sk: 'EUR', hu: 'HUF', ro: 'RON', hr: 'EUR', sl: 'EUR', lt: 'EUR', lv: 'EUR', et: 'EUR', az: 'AZN', vi: 'VND', id: 'IDR', el: 'EUR', ka: 'GEL', hy: 'AMD', hi: 'INR', th: 'THB', zh: 'CNY', ja: 'JPY', ko: 'KRW', he: 'ILS', ar: 'AED', fa: 'IRR' };
   /* the markets an item can be marked available in: EU as a block, then any country (ISO 3166 alpha-2) */
   const COUNTRIES = ['EU', 'TR', 'RU', 'UA', 'KZ', 'BY', 'GE', 'AM', 'AZ', 'US', 'GB', 'DE', 'FR', 'ES', 'IT', 'PT', 'NL', 'BE', 'AT', 'CH', 'SE', 'NO', 'DK', 'FI', 'PL', 'CZ', 'SK', 'HU', 'RO', 'BG', 'RS', 'HR', 'SI', 'GR', 'CY', 'LT', 'LV', 'EE', 'IE', 'IL', 'AE', 'SA', 'IN', 'CN', 'HK', 'JP', 'KR', 'TH', 'VN', 'ID', 'MY', 'SG', 'AU', 'NZ', 'CA', 'MX', 'BR', 'AR', 'CL', 'ZA', 'EG', 'MA', 'KE', 'NG'];
   const EU_NAME = { en: 'Europe', ru: 'Европа', uk: 'Європа', tr: 'Avrupa', de: 'Europa', fr: 'Europe', es: 'Europa', it: 'Europa', pt: 'Europa', pl: 'Europa', nl: 'Europa', kk: 'Еуропа', hi: 'यूरोप', zh: '欧洲', ja: 'ヨーロッパ', ko: '유럽' };
@@ -66,6 +68,15 @@
   function money(amount, currency, lang) {
     try { return new Intl.NumberFormat(lang, { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount); } catch (e) { return Math.round(amount) + ' ' + currency; }
   }
+  /* English prices are USD: a bare number or range gets its $ ("15" → "$15", "~15" → "~$15", "15–20", "349+", "3.5k", "15/yr");
+     anything else stays exactly as typed: "$55", "€120", "15 TL", "1500 руб", "120 euro", "about 15", "free" */
+  const BARE = /^[~≈<>]?\s*\d[\d\s.,]*k?(?:\s*[–—-]\s*\d[\d\s.,]*k?)?\+?(?:\s*\/\s*\p{L}+\.?)?$/iu;
+  function usd(v) {
+    const s = String(v == null ? '' : v).trim();
+    return BARE.test(s) ? s.replace(/^([~≈<>]?\s*)/, (m, p) => p + '$') : s;
+  }
+  /* the English price names dollars (after usd): only then can it be converted at the USD rate */
+  const isUSD = (v) => /\$|\bUSD\b/i.test(String(v == null ? '' : v));
   /* "$1,200", "~$55", "$11 800", "$3.5k", "$42–50" → 1200, 55, 11800, 3500, 42; nothing numeric → null */
   function priceUSD(v) {
     const m = String(v == null ? '' : v).replace(/\u00a0/g, ' ').match(/(\d(?:[\d,.]|\s(?=\d))*)\s*(k)?/i); if (!m) return null;
@@ -77,5 +88,5 @@
     if (!r.ok) throw new Error('rates ' + r.status);
     const j = await r.json(); return { date: j.date, usd: j.usd || {} };
   }
-  window.Langs = { LANGS, CURRENCIES, COUNTRIES, regionName, flag, money, priceUSD, rates, info: (code) => LANGS[code] || { label: String(code || '').toUpperCase().slice(0, 3), name: code, script: 'other' } };
+  window.Langs = { LANGS, CURRENCIES, COUNTRIES, LANG_CUR, regionName, flag, money, usd, isUSD, priceUSD, rates, info: (code) => LANGS[code] || { label: String(code || '').toUpperCase().slice(0, 3), name: code, script: 'other' } };
 })();

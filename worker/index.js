@@ -11,6 +11,7 @@
 // Owner (Authorization: Bearer <ADMIN_TOKEN>, a Worker secret; admin.html keeps it in localStorage):
 //   GET    /api/lists/:list/admin/ping             → 204 (token check)
 //   POST   /api/lists/:list/admin/translate        body { to, strings: [{ id, text }] } → { out: [{ id, text }] } via Claude (secret ANTHROPIC_API_KEY; 503 without it)
+//   POST   /api/lists/:list/admin/letters          body { lang, name } → { words: [{ ch, word }] }: one kind word per letter of the owner's name, via Claude
 //   PUT    /api/lists/:list                        body = whole document → { updated } | 409 { error: 'stale', updated }
 //                                                  (body.updated must equal the stored one; the first save always goes in)
 //   POST   /api/lists/:list/images/:id             body = image bytes, Content-Type image/webp|jpeg|png → { url, updated }
@@ -59,6 +60,7 @@ export default {
           const auth = await adminOk(req, env); if (auth !== true) return auth(cors);
           if (p.length === 5 && p[4] === 'ping') return new Response(null, { status: 204, headers: { ...cors, 'Cache-Control': 'no-store' } });
           if (p.length === 5 && p[4] === 'translate' && req.method === 'POST') return await translate(req, env, cors);
+          if (p.length === 5 && p[4] === 'letters' && req.method === 'POST') return await letters(req, env, cors);
           if (p.length === 5 && p[4] === 'bookings' && req.method === 'GET') return out(await ownerBookings(env, list), 200, cors);
           if (p.length === 6 && p[4] === 'bookings' && ITEM.test(p[5]) && req.method === 'DELETE') return await ownerUnbook(env, list, p[5], cors);
         }
@@ -89,6 +91,9 @@ async function putDoc(req, env, list, cors) {
   if (st.currency != null && !/^[A-Z]{3}$/.test(st.currency)) return out({ error: 'bad_currency' }, 400, cors);
   if (st.rate != null && !(Number.isFinite(st.rate) && st.rate > 0)) return out({ error: 'bad_rate' }, 400, cors);
   if (st.about != null && !aboutOk(st.about)) return out({ error: 'bad_about' }, 400, cors);
+  if (st.owner != null && !text(st.owner, 80)) return out({ error: 'bad_owner' }, 400, cors);
+  if (st.xl != null && !xlOk(st.xl)) return out({ error: 'bad_xl' }, 400, cors);
+  if (st.letters != null && !lettersOk(st.letters)) return out({ error: 'bad_letters' }, 400, cors);
   const ids = new Set();
   for (const it of doc.items) {
     if (!it || typeof it.id !== 'string' || !ITEM.test(it.id) || ids.has(it.id)) return out({ error: 'bad_item_id', id: it && it.id }, 400, cors);
@@ -109,15 +114,32 @@ async function putDoc(req, env, list, cors) {
   return out({ updated: now }, 200, cors);
 }
 
-/* "About the owner" (site.about): { title, text, photo, links } — texts a string or { en, <lang>: … } ≤ 4000 chars each,
-   photo null or a URL string ≤ 300, up to four links { t, u } with an http(s) URL ≤ 500 */
+/* "About the owner" (site.about): { title, text, photo, hero, links } — texts a string or { en, <lang>: … } ≤ 4000 chars each,
+   photo null or a URL string ≤ 300, hero null or the id of a drawing the page ships, up to four links { t, u } with an http(s) URL ≤ 500 */
 const text = (v, max) => v == null || (typeof v === 'string' && v.length <= max) || (!!v && typeof v === 'object' && !Array.isArray(v) && Object.values(v).every(x => typeof x === 'string' && x.length <= max));
 function aboutOk(a) {
   if (!a || typeof a !== 'object' || Array.isArray(a)) return false;
   if (!text(a.title, 4000) || !text(a.text, 4000)) return false;
   if (!(a.photo == null || (typeof a.photo === 'string' && a.photo.length <= 300))) return false;
+  if (!(a.hero == null || (typeof a.hero === 'string' && /^[a-z0-9-]{0,24}$/.test(a.hero)))) return false;
   if (a.links != null && !(Array.isArray(a.links) && a.links.length <= 4 && a.links.every(l => l && typeof l === 'object' && text(l.t, 4000) && typeof l.u === 'string' && l.u.length <= 500 && /^https?:\/\//i.test(l.u)))) return false;
   return true;
+}
+
+/* site.xl: what Translate learned per language — { <lang>: { at, kept: { <text id>: <the English it equals> } } } — so brand names,
+   model numbers and shop names that come back unchanged are not sent (and paid for) again. No count cap: MAX_DOC bounds it */
+function xlOk(x) {
+  if (!x || typeof x !== 'object' || Array.isArray(x)) return false;
+  return Object.entries(x).every(([k, v]) => /^[a-z]{2,3}$/.test(k) && !!v && typeof v === 'object' && !Array.isArray(v) && (v.at == null || Number.isFinite(v.at))
+    && (v.kept == null || (!!v.kept && typeof v.kept === 'object' && !Array.isArray(v.kept) && Object.entries(v.kept).every(([id, s]) => /^[\w.-]{1,80}$/.test(id) && typeof s === 'string' && s.length <= 2000))));
+}
+/* site.letters: the owner's name as keys at the foot of the page — { on, words: { <lang>: [{ ch, word }, …] } } */
+function lettersOk(l) {
+  if (!l || typeof l !== 'object' || Array.isArray(l)) return false;
+  if (l.on != null && typeof l.on !== 'boolean') return false;
+  if (l.words == null) return true;
+  return !!l.words && typeof l.words === 'object' && !Array.isArray(l.words) && Object.entries(l.words).every(([k, arr]) => /^[a-z]{2,3}$/.test(k) && Array.isArray(arr) && arr.length <= 24
+    && arr.every(w => !!w && typeof w === 'object' && typeof w.ch === 'string' && w.ch.length <= 4 && (w.word == null || (typeof w.word === 'string' && w.word.length <= 60))));
 }
 
 /* ---------- images ---------- */
@@ -227,31 +249,74 @@ async function unbook(req, env, list, item, cors) {
 /* The owner asks for the list in another language: every text still missing goes to Claude in one call. Owner-only, needs the
    ANTHROPIC_API_KEY secret; at most 300 texts / 60 KB per call. Brand names, prices, emojis and <i> tags stay as they are. */
 const XL_MODEL = 'claude-sonnet-5-5';
+/* one question to Claude, answered with a JSON array → { arr }; { error, status } on any failure (the caller answers 502).
+   Sonnet 5.5 thinks by default and its thinking counts against max_tokens: an answer cut off there (stop_reason max_tokens),
+   a refusal, or a reply without an array is an error, never an empty success. A refusal is retried server-side on the model
+   Anthropic picks for its category (fallbacks: "default"). extra: request fields such as output_config. */
+async function askJSON(env, prompt, maxTokens, what, extra) {
+  let r;
+  try {
+    r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01' },
+      body: JSON.stringify({ model: XL_MODEL, max_tokens: maxTokens, fallbacks: 'default', ...(extra || {}), messages: [{ role: 'user', content: prompt }] }) });
+  } catch (e) { return { error: 'upstream' }; }
+  if (!r.ok) { console.error(what + ' upstream', r.status, (await r.text().catch(() => '')).slice(0, 300)); return { error: 'upstream', status: r.status }; }
+  const j = await r.json().catch(() => null);
+  if (!j) return { error: 'bad_output' };
+  if (j.stop_reason === 'refusal') { console.error(what + ' refused', JSON.stringify(j.stop_details || null)); return { error: 'refusal' }; }
+  if (j.stop_reason === 'max_tokens') { console.error(what + ' cut off at max_tokens'); return { error: 'cut' }; }
+  const text = (Array.isArray(j.content) ? j.content : []).filter(c => c && c.type === 'text').map(c => c.text || '').join('');
+  const m = text.match(/\[[\s\S]*\]/); if (!m) return { error: 'bad_output' };
+  let arr; try { arr = JSON.parse(m[0]); } catch { return { error: 'bad_output' }; }
+  return Array.isArray(arr) ? { arr } : { error: 'bad_output' };
+}
+async function jsonBody(req, max) {
+  if (!(req.headers.get('Content-Type') || '').toLowerCase().startsWith('application/json')) return { status: 415, error: 'content_type' };
+  const raw = await req.text(); if (raw.length > max) return { status: 413, error: 'too_large' };
+  try { return { body: JSON.parse(raw) }; } catch { return { status: 400, error: 'bad_json' }; }
+}
 async function translate(req, env, cors) {
   if (!env.ANTHROPIC_API_KEY) return out({ error: 'no_key' }, 503, cors);
-  if (!(req.headers.get('Content-Type') || '').toLowerCase().startsWith('application/json')) return out({ error: 'content_type' }, 415, cors);
-  const raw = await req.text(); if (raw.length > 60000) return out({ error: 'too_large' }, 413, cors);
-  let body; try { body = JSON.parse(raw); } catch { return out({ error: 'bad_json' }, 400, cors); }
-  const to = String(body && body.to || '').toLowerCase();
+  const b = await jsonBody(req, 60000); if (b.error) return out({ error: b.error }, b.status, cors);
+  const body = b.body, to = String(body && body.to || '').toLowerCase();
   if (!/^[a-z]{2,3}$/.test(to) || to === 'en') return out({ error: 'bad_lang' }, 400, cors);
   const strings = (Array.isArray(body.strings) ? body.strings : []).filter(s => s && typeof s.id === 'string' && /^[\w.-]{1,80}$/.test(s.id) && typeof s.text === 'string' && s.text.trim()).slice(0, 300).map(s => ({ id: s.id, text: s.text.slice(0, 2000) }));
   if (!strings.length) return out({ out: [] }, 200, cors);
   const prompt = `You translate the texts of a personal gift wishlist web page that someone shares with friends. Target language code: "${to}". ` +
     `Tone: informal, warm, natural for a native speaker, concise (the texts sit on small cards). Keep brand and product names, model numbers, prices, ` +
     `currency symbols, emojis, the character ✓ and any HTML tags such as <i>…</i> exactly as they are. Translate only the words. ` +
+    `A person's first name (id "site.owner") is written the way that language writes that name, in its own script. ` +
     `Reply with ONLY a JSON array of objects {"id": …, "text": …}, same ids, same order, nothing else.\n\n` + JSON.stringify(strings);
-  let r;
-  try {
-    r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: XL_MODEL, max_tokens: 8000, messages: [{ role: 'user', content: prompt }] }) });
-  } catch (e) { return out({ error: 'upstream' }, 502, cors); }
-  if (!r.ok) { console.error('translate upstream', r.status, (await r.text().catch(() => '')).slice(0, 300)); return out({ error: 'upstream', status: r.status }, 502, cors); }
-  const j = await r.json().catch(() => null);
-  const text = ((j && j.content) || []).map(c => c && c.text || '').join('');
-  const m = text.match(/\[[\s\S]*\]/); let arr;
-  try { arr = JSON.parse(m ? m[0] : '[]'); } catch { return out({ error: 'bad_output' }, 502, cors); }
+  const a = await askJSON(env, prompt, 16000, 'translate');   // up to 300 texts plus the thinking before them
+  if (a.error) return out({ error: a.error, status: a.status }, 502, cors);
   const ids = new Set(strings.map(s => s.id));
-  return out({ out: (Array.isArray(arr) ? arr : []).filter(x => x && ids.has(x.id) && typeof x.text === 'string').map(x => ({ id: x.id, text: x.text.slice(0, 2000) })) }, 200, cors);
+  return out({ out: a.arr.filter(x => x && ids.has(x.id) && typeof x.text === 'string').map(x => ({ id: x.id, text: x.text.slice(0, 2000) })) }, 200, cors);
+}
+/* The owner's name, letter by letter: one kind word per letter, in the language asked for (admin → Setup → "Suggest words").
+   Owner-only, same key. The answer always has one entry per letter of the name, in order; a letter Claude skipped gets an empty word. */
+async function letters(req, env, cors) {
+  if (!env.ANTHROPIC_API_KEY) return out({ error: 'no_key' }, 503, cors);
+  const b = await jsonBody(req, 2000); if (b.error) return out({ error: b.error }, b.status, cors);
+  const body = b.body, lang = String(body && body.lang || '').toLowerCase(), name = cleanName(body && body.name);
+  if (!/^[a-z]{2,3}$/.test(lang)) return out({ error: 'bad_lang' }, 400, cors);
+  const chars = name ? [...name].filter(c => /\p{L}/u.test(c)) : [];
+  if (!chars.length || chars.length > 24) return out({ error: 'bad_name' }, 400, cors);
+  const prompt = `A personal gift-wishlist web page shows its owner's first name as a row of letter keys; a tap on a key reveals one word for that letter that says something good about the owner. ` +
+    `Owner's name: "${name}". Language code: "${lang}". For EACH letter of the name, in order (${chars.length} letters: ${chars.join(' ')}), give ONE word in that language, in its own script, ` +
+    `that starts with that exact letter (same letter, any case) and names an admirable quality of a person: warm, confident, specific, varied (no repeats; mix character, mind, heart, energy, taste), ` +
+    `one word (two at most), nothing cheesy, nothing negative or double-edged. A rare letter still gets the best honest word that starts with it. ` +
+    `Reply with ONLY a JSON array of {"ch": "<the letter as written in the name>", "word": "<the word>"}, one object per letter, same order, nothing else.`;
+  const a = await askJSON(env, prompt, 4000, 'letters', { output_config: { effort: 'low' } });   // a word per letter: little to think about
+  if (a.error) return out({ error: a.error, status: a.status }, 502, cors);
+  const got = a.arr.filter(x => x && typeof x === 'object'), used = new Set();
+  const same = (x, ch) => x && typeof x.ch === 'string' && x.ch.toLowerCase() === ch.toLowerCase();
+  const words = chars.map((ch, i) => {   // by position, else the first unused entry for that letter: a skipped letter can't hand a repeated one another's word
+    let k = !used.has(i) && same(got[i], ch) ? i : got.findIndex((y, n) => !used.has(n) && same(y, ch));
+    if (k < 0) return { ch, word: '' };
+    used.add(k);
+    return { ch, word: typeof got[k].word === 'string' ? got[k].word.trim().slice(0, 60) : '' };
+  });
+  if (!words.some(w => w.word)) return out({ error: 'bad_output' }, 502, cors);   // nothing usable came back: not a success with blanks
+  return out({ words }, 200, cors);
 }
 
 /* ---------- helpers ---------- */
