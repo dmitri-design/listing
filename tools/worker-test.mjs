@@ -95,6 +95,19 @@ r = await call('PUT', '/api/lists/dmitri', { body: JSON.stringify({ ...cur, item
 r = await call('DELETE', '/api/lists/dmitri/images/osprey', { headers: { Authorization: 'Bearer secret-admin-token-xyz' } }); ok(r.status === 409 && (await j(r)).error === 'in_use' && T.images.has('dmitri/osprey'), 'photo the list shows → 409 in_use, kept');
 r = await call('PUT', '/api/lists/dmitri', { body: JSON.stringify({ ...cur, updated: pw.updated }), headers: AJ }); ok(r.status === 200, 'list no longer points at it');
 r = await call('DELETE', '/api/lists/dmitri/images/osprey', { headers: { Authorization: 'Bearer secret-admin-token-xyz' } }); ok(r.status === 204 && !T.images.has('dmitri/osprey'), 'image delete');
+// about the owner: site.about is checked on PUT, and the owner's photo counts as in use
+const cur2 = await j(await call('GET', '/api/lists/dmitri'));
+const about = { title: { en: 'About Dmitri', ru: 'О Диме' }, text: { en: 'Hi.\n\nI like coffee.', ru: 'Привет.' }, photo: null, links: [{ t: { en: 'Telegram', ru: 'Телеграм' }, u: 'https://t.me/dmitri' }, { t: 'site', u: 'http://example.com' }] };
+r = await call('PUT', '/api/lists/dmitri', { body: JSON.stringify({ ...cur2, site: { ...cur2.site, about } }), headers: AJ }); ok(r.status === 200, 'PUT with a valid site.about → 200');
+r = await call('GET', '/api/lists/dmitri'); const ga = await j(r); ok(ga.site.about && ga.site.about.links.length === 2 && ga.site.about.title.ru === 'О Диме', 'about stored as sent');
+for (const [name, bad] of [['a javascript: link', { ...about, links: [{ t: 'x', u: 'javascript:alert(1)' }] }], ['five links', { ...about, links: Array(5).fill({ t: 'x', u: 'https://a.b' }) }], ['a link without a URL', { ...about, links: [{ t: 'x' }] }], ['a numeric photo', { ...about, photo: 5 }], ['a 4001-char story', { ...about, text: { en: 'x'.repeat(4001) } }], ['an array', []]]) {
+  r = await call('PUT', '/api/lists/dmitri', { body: JSON.stringify({ ...ga, site: { ...ga.site, about: bad } }), headers: AJ }); ok(r.status === 400 && (await j(r)).error === 'bad_about', `PUT about with ${name} → 400 bad_about`);
+}
+r = await call('POST', '/api/lists/dmitri/images/about-1', { body: png, headers: { 'Content-Type': 'image/png', Authorization: 'Bearer secret-admin-token-xyz' } }); const ap = await j(r); ok(r.status === 200, 'owner photo upload');
+r = await call('PUT', '/api/lists/dmitri', { body: JSON.stringify({ ...ga, site: { ...ga.site, about: { ...about, photo: ap.url } } }), headers: AJ }); const pa2 = await j(r); ok(r.status === 200, 'list points about at the photo');
+r = await call('DELETE', '/api/lists/dmitri/images/about-1', { headers: { Authorization: 'Bearer secret-admin-token-xyz' } }); ok(r.status === 409 && T.images.has('dmitri/about-1'), 'owner photo the list shows → 409 in_use, kept');
+r = await call('PUT', '/api/lists/dmitri', { body: JSON.stringify({ ...ga, updated: pa2.updated, site: { ...ga.site, about: { ...about, photo: null } } }), headers: AJ }); ok(r.status === 200, 'about photo taken off the list');
+r = await call('DELETE', '/api/lists/dmitri/images/about-1', { headers: { Authorization: 'Bearer secret-admin-token-xyz' } }); ok(r.status === 204 && !T.images.has('dmitri/about-1'), 'then it can go');
 const envNoAdmin = { ...env, ADMIN_TOKEN: undefined };
 r = await worker.fetch(new Request('https://api.test/api/lists/dmitri/admin/ping', { headers: { Authorization: 'Bearer secret-admin-token-xyz' } }), envNoAdmin); ok(r.status === 503, 'admin disabled without secret → 503');
 r = await call('POST', '/api/lists/dmitri/admin/translate', { headers: { Authorization: 'Bearer secret-admin-token-xyz', 'Content-Type': 'application/json' }, body: JSON.stringify({ to: 'tr', strings: [{ id: 'site.title', text: 'Wishlist' }] }) }); ok(r.status === 503 && (await r.json()).error === 'no_key', 'translate without ANTHROPIC_API_KEY → 503 no_key');

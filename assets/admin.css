@@ -139,9 +139,9 @@ html:has(dialog.sheet[open]) { overflow: hidden; }   /* the list behind a sheet 
 .avrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 15px; color: var(--ink); }
 /* where-to-look row: [shop EN][shop RU][✕] over [link]; on phones EN + ✕, then RU, then link, one per line */
 .wrow { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px dashed var(--line); }
-.wrow [data-wu] { grid-column: 1 / -2; }
+.wrow [data-wu], .wrow [data-au] { grid-column: 1 / -2; }   /* the URL takes the whole second line (where to look, about links) */
 .wrow .btn { grid-column: -2 / -1; grid-row: 1; min-width: 44px; padding: 0; }
-@media (max-width: 420px) { .wrow { grid-template-columns: 1fr auto; } .wrow [data-wr], .wrow [data-wu] { grid-column: 1 / -1; } }
+@media (max-width: 420px) { .wrow { grid-template-columns: 1fr auto; } .wrow [data-wr], .wrow [data-wu], .wrow [data-ar], .wrow [data-au] { grid-column: 1 / -1; } }
 .danger-zone { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
 .actions { margin-top: 6px; }
 /* desktop: a sheet is as tall as its content (top:0 + bottom:0 + height:auto would stretch it), the body scrolls past 90vh */
@@ -219,6 +219,11 @@ b[data-l2-cur] { font-weight: 500; color: var(--muted); }
 
 /* small words editor (Texts tab) */
 .words { margin: 4px 0 16px; border-top: 1px solid var(--line); padding-top: 6px; }
+/* about the owner (Texts): a photo box like the editor's, title, story, links */
+.about-ed { margin: 6px 0 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.about-ed h3 { margin: 0 0 4px; font: 600 15px/1.2 var(--sans); color: var(--ink); }
+.about-ed > .help { margin: 0 0 12px; }
+.about-ed .photo-box { height: 130px; }
 .words summary { cursor: pointer; font-weight: 600; font-size: 14px; min-height: 44px; display: flex; align-items: center; gap: 8px; list-style: none; }
 .words summary::-webkit-details-marker { display: none; }
 .words summary::before { content: "›"; display: inline-block; color: var(--muted); transition: transform .15s; width: 10px; }

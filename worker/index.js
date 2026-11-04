@@ -88,6 +88,7 @@ async function putDoc(req, env, list, cors) {
   if (st.markets != null && !(Array.isArray(st.markets) && st.markets.length <= 6 && st.markets.every(c => /^[A-Z]{2}$/.test(c)))) return out({ error: 'bad_markets' }, 400, cors);
   if (st.currency != null && !/^[A-Z]{3}$/.test(st.currency)) return out({ error: 'bad_currency' }, 400, cors);
   if (st.rate != null && !(Number.isFinite(st.rate) && st.rate > 0)) return out({ error: 'bad_rate' }, 400, cors);
+  if (st.about != null && !aboutOk(st.about)) return out({ error: 'bad_about' }, 400, cors);
   const ids = new Set();
   for (const it of doc.items) {
     if (!it || typeof it.id !== 'string' || !ITEM.test(it.id) || ids.has(it.id)) return out({ error: 'bad_item_id', id: it && it.id }, 400, cors);
@@ -106,6 +107,17 @@ async function putDoc(req, env, list, cors) {
     return out({ error: 'stale', updated: cur ? cur.updated_at : null }, 409, cors);
   }
   return out({ updated: now }, 200, cors);
+}
+
+/* "About the owner" (site.about): { title, text, photo, links } — texts a string or { en, <lang>: … } ≤ 4000 chars each,
+   photo null or a URL string ≤ 300, up to four links { t, u } with an http(s) URL ≤ 500 */
+const text = (v, max) => v == null || (typeof v === 'string' && v.length <= max) || (!!v && typeof v === 'object' && !Array.isArray(v) && Object.values(v).every(x => typeof x === 'string' && x.length <= max));
+function aboutOk(a) {
+  if (!a || typeof a !== 'object' || Array.isArray(a)) return false;
+  if (!text(a.title, 4000) || !text(a.text, 4000)) return false;
+  if (!(a.photo == null || (typeof a.photo === 'string' && a.photo.length <= 300))) return false;
+  if (a.links != null && !(Array.isArray(a.links) && a.links.length <= 4 && a.links.every(l => l && typeof l === 'object' && text(l.t, 4000) && typeof l.u === 'string' && l.u.length <= 500 && /^https?:\/\//i.test(l.u)))) return false;
+  return true;
 }
 
 /* ---------- images ---------- */
@@ -138,6 +150,7 @@ async function deleteImage(req, env, list, id, cors) {
   const doc = row ? JSON.parse(row.doc) : null, items = doc ? doc.items : null;
   const key = (u) => (String(u).match(/\/images\/([a-z0-9-]+)(?:[?#]|$)/) || [])[1];
   const walls = ['light', 'dark'].map(s => doc && doc.site && doc.site.bg && doc.site.bg[s] && doc.site.bg[s].src);   // the wall photos count as in use too
+  walls.push(doc && doc.site && doc.site.about && doc.site.about.photo);   // and the owner's photo
   if ((Array.isArray(items) && items.some(it => it && typeof it.image === 'string' && key(it.image) === id)) || walls.some(u => typeof u === 'string' && key(u) === id)) return out({ error: 'in_use' }, 409, cors);
   await env.DB.prepare('DELETE FROM images WHERE list = ?1 AND id = ?2').bind(list, id).run();
   return new Response(null, { status: 204, headers: { ...cors, 'Cache-Control': 'no-store' } });

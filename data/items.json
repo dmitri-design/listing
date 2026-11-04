@@ -36,6 +36,18 @@
       "TR",
       "RU"
     ],
+    "about": {
+      "title": {
+        "en": "",
+        "ru": ""
+      },
+      "text": {
+        "en": "",
+        "ru": ""
+      },
+      "photo": null,
+      "links": []
+    },
     "api": "https://wishlist-api.dmitri-design.workers.dev"
   },
   "tiers": [
@@ -267,6 +279,10 @@
     "close": {
       "en": "Close",
       "ru": "Закрыть"
+    },
+    "aboutLink": {
+      "en": "About the owner",
+      "ru": "Об авторе"
     }
   },
   "items": [

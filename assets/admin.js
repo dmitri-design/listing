@@ -99,7 +99,7 @@
     $('#seedBtn').disabled = false;
     if (ok) { show('app'); renderAll(); loadBookings(); } else enter();   // re-check: seeded meanwhile (409), password, connection
   });
-  $('#logoutBtn').addEventListener('click', async () => { if (!await guardLook() || !await guardSetup()) return; forget(); DOC = null; $('#tokenIn').value = ''; $('#loginErr').hidden = true; show('login'); });
+  $('#logoutBtn').addEventListener('click', async () => { if (!await guardLook() || !await guardSetup()) return; resetAbout(); forget(); DOC = null; $('#tokenIn').value = ''; $('#loginErr').hidden = true; show('login'); });
   $('#reloadBtn').addEventListener('click', async () => { if (await guardLook() && await guardSetup()) enter(); });
   $('#exportBtn').addEventListener('click', () => {
     const blob = new Blob([JSON.stringify(DOC, null, 2) + '\n'], { type: 'application/json' });
@@ -125,8 +125,8 @@
   /* Photos uploaded to the Worker: once a save lands, the ones the list no longer points at go (replaced, removed, item deleted). */
   const imgBase = () => `${API}/api/lists/${LIST}/images/`;
   const imgKey = (u) => typeof u === 'string' && u.startsWith(imgBase()) ? u.slice(imgBase().length).split(/[?#]/)[0] : '';
-  /* every Worker photo the list points at: item photos and the two walls */
-  const imgKeys = (d) => new Set([...((d && d.items) || []).map(i => imgKey(i.image)), ...['light', 'dark'].map(s => imgKey(d && d.site && d.site.bg && d.site.bg[s] && d.site.bg[s].src))].filter(k => /^[a-z0-9-]{1,40}$/.test(k)));
+  /* every Worker photo the list points at: item photos, the two walls and the owner's photo */
+  const imgKeys = (d) => new Set([...((d && d.items) || []).map(i => imgKey(i.image)), ...['light', 'dark'].map(s => imgKey(d && d.site && d.site.bg && d.site.bg[s] && d.site.bg[s].src)), imgKey(d && d.site && d.site.about && d.site.about.photo)].filter(k => /^[a-z0-9-]{1,40}$/.test(k)));
   function dropImages(was) { const now = imgKeys(DOC); for (const k of was) if (!now.has(k)) fetch(imgBase() + k, { method: 'DELETE', headers: authHeaders() }).catch(() => {}); }
 
   /* ---------- views ---------- */
@@ -339,9 +339,17 @@
     if (fresh) prev = null;
     if (fresh) list.innerHTML = keys.map(k => { const lb = esc(WORD_LABELS[k] || k); return `<div class="wordrow"><span>${lb}</span><input name="ui.${esc(k)}.en" type="text" placeholder="EN" aria-label="${lb} · EN"><input name="ui.${esc(k)}.l2" type="text" lang="${esc(L2)}" data-l2-input placeholder="${esc(L2.toUpperCase())}" aria-label="${lb} · ${esc(L2.toUpperCase())}"></div>`; }).join('');
     for (const k of keys) for (const l of ['en', 'l2']) { const el = f.elements[`ui.${k}.${l}`]; if (fresh && el) el.value = DOC.ui[k][LK[l]] || ''; else set(el, prev && prev.ui[k] && prev.ui[k][LK[l]], DOC.ui[k][LK[l]]); }
+    /* about the owner: the fields follow the same rule; the link rows redraw on the first draw and when the stored links changed */
+    const ab = aboutOf(DOC), pab = aboutOf(prev), lv = (v, l) => (v && typeof v === 'object') ? (v[l] ?? '') : (l === 'en' ? (v ?? '') : '');
+    for (const k of ['title', 'text']) for (const l of ['en', 'l2']) set(f.elements[`about.${k}.${l}`], prev && lv(pab[k], LK[l]), lv(ab[k], LK[l]));
+    f.elements['about.title.en'].placeholder = enOf(DOC.site.owner) ? `About ${enOf(DOC.site.owner)}` : 'About the owner';   // what the page shows while the title is empty
+    f.elements['about.title.l2'].placeholder = (DOC.ui.aboutLink && typeof DOC.ui.aboutLink === 'object' && DOC.ui.aboutLink[L2]) || '';
+    if (fresh || (!$('#aboutRows').children.length && aboutLinks(DOC).length) || JSON.stringify(aboutLinks(prev)) !== JSON.stringify(aboutLinks(DOC))) renderAboutRows(aboutLinks(DOC).map((w, i) => ({ ...w, src: i })));
+    renderAboutPhoto();
   }
   $('#textsForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (saving) { toast('Still saving…'); return; }
     const doc = JSON.parse(JSON.stringify(DOC)), f = e.target;
     const both = (k, en, alt) => Object.assign({}, (k && typeof k === 'object') ? k : {}, { en, [L2]: alt });   // other languages' words stay untouched
     for (const k of TEXT_FIELDS) doc.site[k] = both(doc.site[k], f.elements[`${k}.en`].value.trim(), f.elements[`${k}.l2`].value.trim());
@@ -351,8 +359,75 @@
       const v = el.value.trim(); if (m[2] === 'en' && !v) continue;
       doc.ui[m[1]][m[2] === 'en' ? 'en' : L2] = v || doc.ui[m[1]].en;
     }
-    if (await save(doc, 'Texts saved')) renderTexts(doc);   // saved fields show trimmed; typing since the tap stays
+    /* about the owner: title, story, links; a photo picked here goes up first, under a fresh key, so the live one stays until the list points elsewhere */
+    const a0 = aboutOf(doc), pi = aboutImage;
+    const about = { title: both(a0.title, f.elements['about.title.en'].value.trim(), f.elements['about.title.l2'].value.trim()), text: both(a0.text, f.elements['about.text.en'].value.trim(), f.elements['about.text.l2'].value.trim()), photo: aboutGone ? null : (typeof a0.photo === 'string' && a0.photo) || null, links: readAbout() };
+    if (pi) {
+      if (!pi.src) {
+        const key = `about-${Date.now().toString(36)}`, btn = $('#textsSave');
+        saving = true; btn.disabled = true; btn.textContent = 'Uploading…';
+        const r = await fetch(`${API}/api/lists/${LIST}/images/${key}`, { method: 'POST', headers: authHeaders({ 'Content-Type': pi.type }), body: pi.blob, signal: giveUp(60000) }).catch(() => null);
+        const j = r && r.ok ? await r.json().catch(() => null) : null;
+        saving = false; btn.disabled = false; btn.textContent = 'Save texts';
+        if (!j) { toast(r && r.status === 413 ? 'Photo too big even after shrinking.' : r && r.status === 401 ? 'Password rejected' : 'Photo upload failed. Check the connection.', true); snd('state.error'); return; }
+        pi.src = j.url;   // a retried Save reuses it
+        if (aboutImage !== pi) { dropUpload(pi.src); return; }   // replaced or removed while it went up: nothing to save for it
+      }
+      about.photo = pi.src;
+    }
+    doc.site.about = about;
+    if (await save(doc, 'Texts saved')) { if (aboutImage === pi) aboutImage = null; aboutGone = false; renderTexts(doc); }   // saved fields show trimmed; typing since the tap stays; save() drops the photo this one replaced
+    else if (pi && aboutImage !== pi) dropUpload(pi.src);
   });
+
+  /* ---------- about the owner (Texts): a photo box like the editor's, link rows like "where to look" — site.about ---------- */
+  let aboutImage = null, aboutGone = false;   // a photo picked here (shrunk; .src once uploaded) / the saved photo taken away — both until Save texts
+  const aboutOf = (d) => (d && d.site && d.site.about && typeof d.site.about === 'object' && !Array.isArray(d.site.about)) ? d.site.about : {};
+  const aboutLinks = (d) => { const l = aboutOf(d).links; return Array.isArray(l) ? l.slice(0, 4) : []; };
+  const CAMERA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.6"/></svg>';
+  function renderAboutRows(rows) {   // rows: [{ t, u, src }], src = the stored link a row edits (its words in other languages stay on save)
+    $('#aboutRows').innerHTML = rows.slice(0, 4).map(w => `<div class="wrow" data-src="${w.src ?? ''}"><input type="text" placeholder="label" aria-label="Link label · EN" value="${esc(enOf(w.t))}" data-al><input type="text" lang="${esc(L2)}" data-l2-input placeholder="· ${esc(L2.toUpperCase())}, if different" aria-label="Link label · ${esc(L2.toUpperCase())}" value="${esc(l2Of(w.t))}" data-ar><input type="url" inputmode="url" placeholder="https://…" aria-label="Link" value="${esc(w.u || '')}" data-au autocapitalize="none"><button type="button" class="btn ghost sm" data-ax aria-label="Remove link">✕</button></div>`).join('');
+    $('#aboutAdd').hidden = rows.length >= 4;
+    applyL2();
+  }
+  const aboutRaw = () => $$('#aboutRows .wrow').map(r => ({ t: { en: $('[data-al]', r).value, [L2]: $('[data-ar]', r).value }, u: $('[data-au]', r).value, src: r.dataset.src === '' ? null : +r.dataset.src }));
+  /* rows → [{ t, u }]: a link without a name is named by its site; a row without a link is dropped */
+  function readAbout() {
+    const old = aboutLinks(DOC);
+    return aboutRaw().map(w => {
+      const en = w.t.en.trim(), tr = w.t[L2].trim(), u = w.u.trim(); if (!u) return null;
+      let t = en || tr; if (!t) { try { t = new URL(u).hostname.replace(/^www\./, ''); } catch (e) { t = u; } }
+      return { t: bi(t, tr, w.src != null && old[w.src] ? old[w.src].t : null), u };
+    }).filter(Boolean).slice(0, 4);
+  }
+  $('#aboutAdd').addEventListener('click', () => { const rows = aboutRaw(); if (rows.length >= 4) return; rows.push({ t: '', u: '', src: null }); renderAboutRows(rows); const last = $$('#aboutRows [data-al]').pop(); if (last) last.focus(); });
+  $('#aboutRows').addEventListener('click', (e) => { const b = e.target.closest('[data-ax]'); if (!b) return; b.closest('.wrow').remove(); renderAboutRows(aboutRaw()); });
+  function renderAboutPhoto() {
+    const saved = aboutOf(DOC).photo, src = aboutImage ? aboutImage.url : (!aboutGone && typeof saved === 'string' && /^https?:\/\//i.test(saved)) ? saved : '';
+    $('#aboutBox').innerHTML = src ? `<img src="${esc(src)}" alt="">` : `<div class="ph">${CAMERA}<b>Tap to add your photo</b><span>${finePointer ? 'or drop / paste one here' : 'camera or library'}</span></div>`;
+    $('#aboutRemove').hidden = !src;
+  }
+  const abox = $('#aboutBox');
+  abox.addEventListener('click', () => $('#aboutIn').click());
+  abox.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#aboutIn').click(); } });
+  ['dragenter', 'dragover'].forEach(ev => abox.addEventListener(ev, (e) => { e.preventDefault(); abox.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => abox.addEventListener(ev, (e) => { e.preventDefault(); abox.classList.remove('over'); }));
+  abox.addEventListener('drop', (e) => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) takeAbout(f); });
+  document.addEventListener('paste', (e) => {   // an image pasted on the Texts tab, with no sheet open, lands in the about box
+    if ($('#app').hidden || curView() !== 'texts' || document.querySelector('dialog[open]')) return;
+    const f = [...((e.clipboardData && e.clipboardData.files) || [])].find(x => x.type.startsWith('image/')); if (f) { e.preventDefault(); takeAbout(f); }
+  });
+  $('#aboutIn').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (f) takeAbout(f); e.target.value = ''; });
+  async function takeAbout(f) {
+    if (!f.type.startsWith('image/')) { toast('That is not an image', true); snd('state.error'); return; }
+    try {
+      const pi = await shrink(f);
+      if (aboutImage && aboutImage.src) dropUpload(aboutImage.src);   // uploaded for a save that failed, now replaced
+      aboutImage = pi; aboutGone = false; renderAboutPhoto(); toast(`Photo ready · ${Math.round(pi.blob.size / 1024)} KB`); snd('toggle.on');
+    } catch (x) { toast('Could not read that photo', true); snd('state.error'); }
+  }
+  $('#aboutRemove').addEventListener('click', () => { if (aboutImage && aboutImage.src) dropUpload(aboutImage.src); aboutImage = null; aboutGone = true; renderAboutPhoto(); snd('toggle.off'); });
+  function resetAbout() { if (aboutImage && aboutImage.src) dropUpload(aboutImage.src); aboutImage = null; aboutGone = false; }
 
   /* ---------- look: the wall behind the cards, one per room (theme) ---------- */
   const SCENES = [{ id: 'aurora', name: 'Aurora' }, { id: 'swirl', name: 'Swirl' }, { id: 'shift', name: 'Shift' }, { id: 'coalesce', name: 'Coalesce' }, { id: 'pipeline', name: 'Pipeline' }];
@@ -554,6 +629,7 @@
   function xlStrings(doc, to) {
     const out = [], add = (id, v) => { if (!v || typeof v !== 'object' || !v.en) return; if (v[to] && v[to] !== v.en) return; out.push({ id, text: v.en }); };
     for (const k of ['title', 'brand', 'tagline', 'legend', 'footer', 'meta']) add('site.' + k, doc.site[k]);
+    const ab = aboutOf(doc); add('site.about.title', ab.title); add('site.about.text', ab.text); aboutLinks(doc).forEach((l, n) => add(`site.about.link.${n}`, l.t));
     doc.tiers.forEach((tr, i) => ['name', 'short', 'range', 'blurb'].forEach(k => add(`tier.${i}.${k}`, tr[k])));
     for (const [k, v] of Object.entries(doc.ui)) if (!/^[a-z]{2}$/.test(k)) add('ui.' + k, v);   // the page's own words too (a language without a ready pack); never the old region keys
     doc.items.forEach(it => { ['name', 'desc', 'note'].forEach(k => add(`item.${it.id}.${k}`, it[k])); (it.where || []).forEach((w, n) => add(`item.${it.id}.where.${n}`, w.t)); });
@@ -563,7 +639,8 @@
     let n = 0;
     for (const { id, text } of out) {
       const p = String(id).split('.'); let o = null;
-      if (p[0] === 'site') o = doc.site[p[1]]; else if (p[0] === 'ui') o = doc.ui[p[1]]; else if (p[0] === 'tier') o = doc.tiers[+p[1]] && doc.tiers[+p[1]][p[2]];
+      if (p[0] === 'site' && p[1] === 'about') { const ab = aboutOf(doc); o = p[2] === 'link' ? (aboutLinks(doc)[+p[3]] || {}).t : ab[p[2]]; }
+      else if (p[0] === 'site') o = doc.site[p[1]]; else if (p[0] === 'ui') o = doc.ui[p[1]]; else if (p[0] === 'tier') o = doc.tiers[+p[1]] && doc.tiers[+p[1]][p[2]];
       else if (p[0] === 'item') { const it = doc.items.find(i => i.id === p[1]); if (!it) continue; o = p[2] === 'where' ? (it.where && it.where[+p[3]] && it.where[+p[3]].t) : it[p[2]]; }
       if (o && typeof o === 'object' && (!o[to] || o[to] === o.en) && typeof text === 'string' && text.trim()) { o[to] = text.trim(); n++; }
     }

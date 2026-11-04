@@ -30,6 +30,16 @@ const t = (v, raw) => {
 const pick = (v, l) => { if (!v || typeof v !== 'object') return v ?? ''; const k = l === 'alt' ? L2 : l; return v[k] ?? v.en ?? ''; };   // a string in one language ('alt' = the second one)
 const art = (k) => (ART[k] || ART.box).replace('<svg ', '<svg width="100%" height="100%" ');
 const safeUrl = (u) => (typeof u === 'string' && /^https?:\/\//i.test(u)) ? u : null;
+/* "About the owner": site.about = { title, text, photo, links } (admin → Texts); the link shows once the story has an English text */
+const ABOUT0 = { en: 'About the owner', ru: 'Об авторе' };   // a list saved before this word existed
+const aboutOf = () => { const a = DATA && DATA.site && DATA.site.about; return a && typeof a === 'object' && !Array.isArray(a) && String(pick(a.text, 'en')).trim() ? a : null; };
+/* the link's label and the sheet's heading: the stored title, else "About <owner>" in English and the page's own word in the second language */
+function aboutTitle() {
+  const a = aboutOf() || {}, word = (DATA && DATA.ui && DATA.ui.aboutLink) || ABOUT0, owner = String(pick(DATA && DATA.site && DATA.site.owner, 'en')).trim();
+  const en = String(pick(a.title, 'en')).trim() || (owner ? `About ${owner}` : pick(word, 'en'));
+  const alt = (a.title && typeof a.title === 'object' && String(a.title[L2] || '').trim()) || (word && typeof word === 'object' && word[L2]) || en;
+  return { en, [L2]: alt };
+}
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const MARK = { y: '✓', g: '~', n: '✗' };
 /* the markets a list marks availability for (site.markets, ISO codes, EU as a block; up to six fit a card back) */
@@ -50,6 +60,7 @@ const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
 const PREVIEW = new URLSearchParams(location.search).get('preview') === '1' && window.parent !== window;
 
 let DATA = null;   // { site, tiers, ui, items }
+let aboutD = null;   // the "about the owner" sheet, built on first open
 /* booking API (Cloudflare Worker). The page stays static; without an API the booking UI simply isn't shown. */
 const LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 let API = '', LIST = 'dmitri';
@@ -158,6 +169,7 @@ function renderSite(site) {
   $('.tag').innerHTML = t(site.tagline);
   $('.legend').innerHTML = t(site.legend, true);
   $('footer .txt').innerHTML = t(site.footer);
+  const ab = $('#aboutRow'); if (ab) { ab.hidden = !aboutOf(); $('#aboutLink').innerHTML = t(aboutTitle()); if (aboutD && aboutD.open) fillAbout(); }
   setLang(L(), false);
 }
 
@@ -595,14 +607,16 @@ function ensureSheet() {
     if (!finePointer.matches && document.activeElement) document.activeElement.blur();
   });
   sheet.querySelector('form').addEventListener('submit', doBook);
-  /* swipe the sheet down to dismiss (grabber + header) */
-  const grab = sheet.querySelector('.sheet-grab');
-  let y0 = null, dy = 0;
-  grab.addEventListener('pointerdown', (e) => { if (booking || e.target.closest('button')) return; y0 = e.clientY; dy = 0; grab.setPointerCapture(e.pointerId); sheet.style.transition = 'none'; });
-  grab.addEventListener('pointermove', (e) => { if (y0 == null) return; dy = Math.max(0, e.clientY - y0); sheet.style.transform = `translateY(${dy}px)`; });
-  const end = () => { if (y0 == null) return; y0 = null; sheet.style.transition = ''; sheet.style.transform = ''; if (dy > 80) closeSheet(); };
-  grab.addEventListener('pointerup', end); grab.addEventListener('pointercancel', end);
+  swipeToClose(sheet, sheet.querySelector('.sheet-grab'), closeSheet, () => booking);   // a booking in flight can't be swiped away
   return sheet;
+}
+/* swipe a sheet down to dismiss (grabber + header): it follows the finger, then springs back or leaves */
+function swipeToClose(d, grab, close, locked) {
+  let y0 = null, dy = 0;
+  grab.addEventListener('pointerdown', (e) => { if ((locked && locked()) || e.target.closest('button')) return; y0 = e.clientY; dy = 0; try { grab.setPointerCapture(e.pointerId); } catch (x) {} d.style.transition = 'none'; });
+  grab.addEventListener('pointermove', (e) => { if (y0 == null) return; dy = Math.max(0, e.clientY - y0); d.style.transform = `translateY(${dy}px)`; });
+  const end = () => { if (y0 == null) return; y0 = null; d.style.transition = ''; d.style.transform = ''; if (dy > 80) close(); };
+  grab.addEventListener('pointerup', end); grab.addEventListener('pointercancel', end);
 }
 function openSheet(id) {
   const it = DATA && DATA.items.find(i => i.id === id); if (!it || !API || booking || PREVIEW) return;   // one booking at a time; nothing is booked from admin's preview
@@ -732,6 +746,41 @@ function openZoom(id) {
   if (!d.open) { d.showModal(); snd('toggle.on', 'crisp'); }
 }
 function closeZoom() { if (zoomD && zoomD.open) zoomD.close(); }
+
+/* ---------- about the owner: a sheet like the booking one — a photo, a short story, links. Built on the first tap, so the
+   photo is fetched only then; a blank line in the story starts a new paragraph; links open in a new tab ---------- */
+const paras = (txt) => String(txt ?? '').split(/\n\s*\n/).map(p => p.trim()).filter(Boolean).map(p => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('');
+const tBlock = (v) => { const en = String(pick(v, 'en')), alt = String(pick(v, 'alt')).trim() || en; return `<div class="l-en" lang="en">${paras(en)}</div><div class="l-2" lang="${L2}"${RTL() ? ' dir="rtl"' : ''}>${paras(alt)}</div>`; };
+function ensureAbout() {
+  if (aboutD) return aboutD;
+  aboutD = document.createElement('dialog'); aboutD.className = 'sheet about'; aboutD.setAttribute('aria-labelledby', 'about-title');
+  aboutD.innerHTML = `<div class="sheet-in"><div class="sheet-grab"><div class="grabber" aria-hidden="true"></div>
+    <div class="sheet-top"><span aria-hidden="true"></span><span aria-hidden="true"></span><button type="button" class="sheet-cancel about-x">${t(DATA.ui.close || CLOSE0)}</button></div></div>
+    <div class="about-body"></div></div>`;
+  app.appendChild(aboutD);
+  aboutD.querySelector('.about-x').addEventListener('click', closeAbout);
+  aboutD.addEventListener('click', (e) => { if (e.target === aboutD) closeAbout(); });   // tap on the dimmed backdrop
+  aboutD.addEventListener('close', () => snd('toggle.off', 'crisp'));
+  swipeToClose(aboutD, aboutD.querySelector('.sheet-grab'), closeAbout);
+  return aboutD;
+}
+function fillAbout() {
+  const a = aboutOf(); if (!a || !aboutD) return;
+  const photo = safeUrl(a.photo);
+  const links = (Array.isArray(a.links) ? a.links : []).slice(0, 4).map(l => {
+    const u = l && safeUrl(l.u); if (!u) return '';
+    let label = l.t; if (!String(pick(label, 'en')).trim()) { try { label = new URL(u).hostname.replace(/^www\./, ''); } catch (e) { label = u; } }   // a link without a name shows its site
+    return `<li><a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${t(label)}</a></li>`;
+  }).join('');
+  aboutD.querySelector('.about-body').innerHTML = `${photo ? `<img class="about-photo" src="${esc(photo)}" alt="" loading="lazy" decoding="async">` : ''}<h2 class="about-title" id="about-title">${t(aboutTitle())}</h2><div class="about-text">${tBlock(a.text)}</div>${links ? `<ul class="about-links">${links}</ul>` : ''}`;
+}
+function openAbout() {
+  if (!aboutOf()) return;
+  ensureAbout(); fillAbout();
+  if (!aboutD.open) { aboutD.showModal(); aboutD.querySelector('.about-body').scrollTop = 0; snd('toggle.on', 'crisp'); }
+}
+function closeAbout() { if (aboutD && aboutD.open) aboutD.close(); }
+$('#aboutLink') && $('#aboutLink').addEventListener('click', openAbout);
 
 /* ---------- data: the repo JSON paints first; when an API is configured, the live list (edited from admin.html) replaces it ---------- */
 const okShape = (d) => d && d.site && Array.isArray(d.tiers) && d.ui && Array.isArray(d.items);
