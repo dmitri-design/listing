@@ -278,6 +278,7 @@ h1 i { font-style: italic; color: var(--gold); }
 .card.got .imgbox > img, .card.got .imgbox > svg { filter: grayscale(.85) contrast(.92); opacity: .7; }
 .card.got .name { color: var(--muted); text-decoration: line-through; text-decoration-thickness: .12em; text-decoration-color: var(--ink-red); text-decoration-skip-ink: none; }
 .card.got .price { opacity: .55; }
+#app:not(.alt) .price:has(> .l-en:empty), #app.alt .price:has(> .l-2:empty) { display: none; }   /* no price on this side (only the other money was typed): no empty tag */
 .cross { position: absolute; left: 8%; top: 9%; width: 84%; height: 78%; z-index: 3; pointer-events: none; overflow: visible; }
 .cross path { fill: none; stroke: var(--ink-red); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; opacity: .82; stroke-dasharray: 1 2; stroke-dashoffset: 1; }
 .row.in .card.got .cross path { animation: draw .5s cubic-bezier(.3,.1,.3,1) forwards; animation-delay: calc(var(--i, 0) * 80ms + .9s); }

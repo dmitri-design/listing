@@ -46,10 +46,11 @@ const MARK = { y: '✓', g: '~', n: '✗' };
 const MARKETS = () => { const m = DATA && DATA.site && Array.isArray(DATA.site.markets) && DATA.site.markets.length ? DATA.site.markets : ['EU', 'TR', 'RU']; return m.map(c => String(c).toUpperCase()).filter(c => /^[A-Z]{2}$/.test(c)).slice(0, 6); };
 const availOf = (it, code) => (it.avail && (it.avail[code] ?? it.avail[code.toLowerCase()])) || 'n';
 /* the price in both languages: USD on the English side (a bare "15" reads "$15"); the second one as typed, else converted from the
-   USD price at the list's rate (Setup). A second price that merely repeats the English one (the editor used to copy it) is not "typed". */
+   USD price at the list's rate (Setup). A second price that merely repeats the English one, with or without its $ (the editor used to
+   copy it, before English prices got their $), is not "typed". */
 const priceOf = (it) => {
   const p = it.price, raw = pick(p, 'en'), en = window.Langs ? Langs.usd(raw) : raw;
-  const alt = p && typeof p === 'object' ? String(p[L2] || '').trim() : '', typed = alt && alt !== raw && alt !== en ? alt : '';
+  const alt = p && typeof p === 'object' ? String(p[L2] || '').trim() : '', typed = alt && (window.Langs ? Langs.usd(alt) : alt) !== en ? alt : '';   // "~15" next to "~$15" is a copy too
   if (typed) return { en, [L2]: typed };
   const site = DATA && DATA.site;
   if (site && site.currency && site.currency !== 'USD' && +site.rate > 0 && window.Langs && Langs.isUSD(en)) { const usd = Langs.priceUSD(en); if (usd != null) return { en, [L2]: '≈ ' + Langs.money(usd * site.rate, site.currency, L2) }; }   // "€120" is not 120 dollars

@@ -84,7 +84,7 @@
   }
   /* today's USD rates from a free, keyless, public-domain feed (fawazahmed0/currency-api on jsDelivr); used by the admin only */
   async function rates() {
-    const r = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.min.json', { cache: 'no-cache' });
+    const r = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.min.json', { cache: 'no-cache', signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined });   // a stalled link ends as a failure, not never
     if (!r.ok) throw new Error('rates ' + r.status);
     const j = await r.json(); return { date: j.date, usd: j.usd || {} };
   }

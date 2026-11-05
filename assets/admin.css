@@ -216,6 +216,7 @@ html.dark select { background-color: #1b1712; border-color: #5a5044; }
 .withbtn input { flex: 1 1 auto; min-width: 0; }
 .withbtn .btn { flex: none; min-width: 46px; font-size: 18px; }
 b[data-l2] { font-weight: 600; }
+#setupForm.busy > [inert] { opacity: .5; transition: opacity .2s; }   /* the rest of Setup waits while a translation runs */
 /* the Translate button: a pill that closes into a circle with a ring while Claude works, then opens again with the word for "translated" */
 .fld.xl { justify-items: center; }
 .xl-btn { position: relative; width: 100%; max-width: 100%; min-height: 44px; height: auto; padding: 8px 18px; border-radius: 999px; overflow: hidden; transition: width .38s var(--ease), background-color .25s, border-color .25s, color .25s, transform .12s; }

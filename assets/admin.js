@@ -8,6 +8,8 @@
   const enOf = (v) => (v && typeof v === 'object' ? v.en : v) ?? '';
   let L2 = 'ru';   // the list's second language (site.lang2); English is always the first
   const l2Of = (v) => (v && typeof v === 'object' ? v[L2] : '') ?? '';
+  /* a second price that only repeats the USD one, with or without its $ ("~15" next to "~$15" is an old copy, not a price in that money) */
+  const sameUSD = (a, b) => { const u = (s) => { s = String(s ?? '').trim(); return window.Langs ? Langs.usd(s) : s; }; return u(a) === u(b); };
   const PACKS = ['ru', 'tr', 'uk', 'de', 'fr', 'es', 'it', 'pt', 'pl', 'nl', 'hi', 'zh', 'ja'];   // the page's own words come ready for these
   /* after Translate: "done" and "translated" in the language just filled in (the owner may not read it yet, but the friends will) */
   /* written per language and checked by native-speaker passes (2026-11-04); the language names itself in its own words */
@@ -628,7 +630,7 @@
   }
   /* ≈: the second price from the USD one, at the rate set in Setup, written the way that language writes money */
   $('#priceConv').addEventListener('click', () => {
-    const usd = priceUSD(form.elements['price.en'].value), rate = +DOC.site.rate, cur = DOC.site.currency;
+    const en = form.elements['price.en'].value, usd = window.Langs && !Langs.isUSD(Langs.usd(en)) ? null : priceUSD(en), rate = +DOC.site.rate, cur = DOC.site.currency;   // "€120" or "1500 TL" is not dollars
     if (usd == null || !(rate > 0) || !cur) { toast('Type a USD price first', true); return; }
     form.elements['price.l2'].value = '≈ ' + (window.Langs ? Langs.money(usd * rate, cur, L2) : Math.round(usd * rate) + ' ' + cur);
     snd('toggle.on');
@@ -636,10 +638,20 @@
 
   /* ---------- setup: second language, second currency, countries ---------- */
   let SETUP_MARKETS = null, setupBase = '';
+  let moneyWas = '';   // the currency the rate box was filled for: picking another one empties the box and fetches its rate
+  let rateSaid = '';   // "<currency> <rate>" the line under the rate box speaks of ('' = the general help)
+  let setupGen = 0, setupEdits = 0;   // the form redrawn (Discard, a save, Reload) / anything typed or picked in it: a save still waiting for a rate stops on either
+  const RATE_HELP = $('#rateHelp').textContent;
   /* what the Setup form shows, as one string: the sticky Save shows while it differs from the saved list */
   const setupSnap = () => { const f = $('#setupForm'); return JSON.stringify([f.elements.lang2.value, f.elements.currency.value, String(f.elements.rate.value).trim(), SETUP_MARKETS, LETTERS]); };
   const setupDirty = () => !!DOC && !!SETUP_MARKETS && setupSnap() !== setupBase;
-  function markSetup() { $('#setupActions').hidden = !setupDirty(); syncXl(); }
+  function markSetup() { $('#setupActions').hidden = !setupDirty(); syncXl(); rateLine(); }
+  /* the line under the rate speaks only of the rate the boxes show; once they show anything else, the general help is back */
+  function rateLine() {
+    const f = $('#setupForm');
+    if (rateSaid && rateSaid !== f.elements.currency.value + ' ' + String(f.elements.rate.value).trim()) { rateSaid = ''; $('#rateHelp').textContent = RATE_HELP; }
+  }
+  function sayRate(text) { const f = $('#setupForm'); $('#rateHelp').textContent = text; rateSaid = f.elements.currency.value + ' ' + String(f.elements.rate.value).trim(); }
   /* the Translate button names the language picked above at once; a pick not saved yet is saved first when it is tapped */
   function syncXl() {
     const to = $('#lang2Sel').value || L2, info = window.Langs ? Langs.info(to) : { name: to.toUpperCase() };
@@ -648,13 +660,13 @@
   }
   function renderSetup() {
     if (!window.Langs) return;
-    rateTok++;
+    rateTok++; rateP = null; setupGen++;   // a fetch for the form as it was is dropped, and a save still waiting for it stops
     const f = $('#setupForm');
     $('#lang2Sel').innerHTML = Object.entries(Langs.LANGS).map(([c, l]) => `<option value="${c}">${esc(l.name)} · ${esc(l.label)}${PACKS.includes(c) ? ' ✓' : ''}</option>`).join('');
     $('#lang2Sel').value = Langs.LANGS[L2] ? L2 : 'ru';
     $('#curSel').innerHTML = '<option value="">— none —</option>' + Langs.CURRENCIES.map(c => `<option value="${c}">${c}</option>`).join('');
     $('#curSel').value = DOC.site.currency || '';
-    f.elements.rate.value = DOC.site.rate || '';
+    f.elements.rate.value = DOC.site.rate || ''; moneyWas = $('#curSel').value;
     SETUP_MARKETS = markets();
     renderMarkets();
     LETTERS = lettersFrom(DOC, L2); renderLetterSets();
@@ -664,7 +676,7 @@
      the rate box is emptied only when the money actually changes (a stale rate for another currency would show wrong prices) */
   $('#lang2Sel').addEventListener('change', () => {
     const f = $('#setupForm'), to = f.elements.lang2.value, cur = window.Langs && Langs.LANG_CUR[to];
-    if (cur && f.elements.currency.value !== cur) { f.elements.currency.value = cur; f.elements.rate.value = ''; fetchRate('soft'); }
+    if (cur && f.elements.currency.value !== cur) { f.elements.currency.value = cur; newMoney(); }
     else if (cur && !f.elements.rate.value.trim()) fetchRate('soft');
     if (LETTERS) { retargetLetters(to); renderLetterSets(); }
   });
@@ -743,22 +755,42 @@
     $('#marketAdd').innerHTML = left.map(c => `<option value="${c}">${Langs.flag(c)} ${esc(Langs.regionName(c, 'en'))}</option>`).join('');
     $('#marketAddBtn').disabled = SETUP_MARKETS.length >= 6 || !left.length;
   }
-  /* today's rate for the chosen currency (typed values always win; a fetch only fills the box) */
-  let rateTok = 0;   // a fetch that lands after the form was reset (Discard, a save) or the currency changed again is dropped
+  /* today's rate for the chosen currency: a fetch fills the box, and a rate typed while it runs wins (the fetch is dropped) */
+  let rateTok = 0;   // a fetch that lands after the form was reset (Discard, a save), the currency changed or a rate was typed is dropped
+  let rateN = 0, rateP = null, rateGaveUp = null;   // fetches running (↻ stays off while any does); the latest one, which a save waits for; the one a save gave up on (the next tap saves without it)
   /* quiet: no sound on success (a pick, not a tap); 'soft': no sound on success, but a failure is still said (the box stays empty) */
   async function fetchRate(quiet) {
     const f = $('#setupForm'), cur = f.elements.currency.value; if (!cur || !window.Langs) return;
-    const b = $('#rateFetch'), tok = ++rateTok; b.disabled = true;
+    const b = $('#rateFetch'), tok = ++rateTok; let done; const p = rateP = new Promise(res => { done = res; });
+    rateN++; b.disabled = true;
     try {
       const r = await Langs.rates(); if (tok !== rateTok || f.elements.currency.value !== cur) return;
       const v = r.usd[cur.toLowerCase()]; if (!v) throw new Error('no ' + cur);
-      f.elements.rate.value = String(+v.toFixed(v < 2 ? 4 : 2)); $('#rateHelp').textContent = `1 USD = ${f.elements.rate.value} ${cur}, as of ${r.date}. Typed values win; ↻ refreshes.`; markSetup(); if (!quiet) snd('toggle.on');
+      f.elements.rate.value = String(+v.toFixed(v < 2 ? 4 : 2));
+      sayRate(`1 USD = ${f.elements.rate.value} ${cur}, as of ${r.date}. Typed values win; ↻ refreshes.`); markSetup(); if (!quiet) snd('toggle.on');
     }
-    catch (e) { if ((!quiet || quiet === 'soft') && tok === rateTok) { toast("Couldn't fetch today's rate. Type it in.", true); snd('state.error'); } }
-    finally { b.disabled = false; }
+    catch (e) {
+      if (tok !== rateTok) return;   // dropped meanwhile: nothing to say
+      const kept = parseFloat(String(f.elements.rate.value).replace(',', '.')) > 0 ? String(f.elements.rate.value).trim() : '';   // a ↻ over a rate already there
+      sayRate(kept ? `Couldn't fetch today's ${cur} rate; ${kept} stays. ↻ tries again.` : `No ${cur} rate yet: type it in, or tap ↻ to try again. Without a rate, the second price shows in USD.`);   // lasts, unlike the toast
+      if (!quiet || quiet === 'soft') { toast(kept ? "Couldn't fetch today's rate." : "Couldn't fetch today's rate. Type it in.", true); snd('state.error'); }
+    }
+    finally { b.disabled = --rateN > 0; if (rateP === p) rateP = null; done(); }
+  }
+  /* the money changed (picked here, or brought by a language): the rate in the box was for the old one, so it goes, and today's
+     rate for the new one is fetched (a failure is said; the box stays empty for a typed rate). A 'change' that keeps the money,
+     as a script can send, leaves the rate alone. */
+  function newMoney() {
+    const f = $('#setupForm'), cur = f.elements.currency.value; if (cur === moneyWas) return;
+    moneyWas = cur; rateTok++; rateP = null;
+    const back = !!cur && !!DOC && cur === (DOC.site.currency || '') && +DOC.site.rate > 0;   // back to the saved money: its saved rate, no fetch (↻ refreshes)
+    f.elements.rate.value = back ? String(DOC.site.rate) : '';
+    if (cur && !back) fetchRate('soft');
   }
   $('#rateFetch').addEventListener('click', () => fetchRate(false));
-  $('#curSel').addEventListener('change', () => { const f = $('#setupForm'); if (f.elements.currency.value && !f.elements.rate.value.trim()) fetchRate(true); });
+  $('#curSel').addEventListener('change', newMoney);
+  $('#setupForm').elements.rate.addEventListener('input', () => { rateTok++; rateP = null; });   // typed while a fetch runs: the typed rate wins
+  $('#setupForm').addEventListener('input', () => { setupEdits++; });   // typed or picked while a save waits for the rate: that save stops; the next tap saves the finished form
   /* translate: every owner text still missing in the second language goes to the Worker, which asks Claude; nothing written is touched */
   /* every owner text the page shows, as { id, text: the English }; xlStrings keeps the ones still missing in the target language */
   function xlAll(doc) {
@@ -831,10 +863,15 @@
     if (xlBusy) return;
     if (saving) { toast('Still saving…'); return; }
     xlBusy = true;
-    try { await translateList(); } finally { xlBusy = false; }
+    try { await translateList(); } finally { xlBusy = false; lockSetup(false); if (xlBtn.classList.contains('is-loading')) xlRest(); }   // a run that stopped halfway (signed out) never leaves the circle spinning
   });
+  /* while a translation runs the rest of Setup can't change: its end redraws the form from the list, which would drop a pick made meanwhile */
+  function lockSetup(on) { for (const el of $('#setupForm').children) if (!el.classList.contains('xl')) el.inert = on; $('#setupForm').classList.toggle('busy', on); if (on) { rateTok++; rateP = null; } }
   async function translateList() {
+    if (suggesting.size) { toast('Still finding words for your name…'); return; }   // their words would land in a locked form and be lost
+    if (rateP && !setupDirty()) { toast("Still getting today's rate…"); return; }   // a ↻ on its way: its rate goes in first, then Translate saves it
     if (setupDirty() && !await saveSetup()) return;   // the language picked above becomes the list's second language first
+    lockSetup(true);
     const to = L2, help = $('#xlHelp'), strings = xlStrings(DOC, to), sent = new Map(strings.map(x => [x.id, x.text])), needLetters = lettersNeed(DOC, to);
     if (!strings.length && !needLetters) { help.textContent = `Everything already has a ${Langs.info(to).name} version.`; openXlDone(to, 0, 0, true); return; }   // nothing goes to the API
     xlState('loading'); help.textContent = strings.length ? `Translating ${strings.length} texts…` : 'Finding words for the letters of your name…';
@@ -848,6 +885,7 @@
     if (strings.length) {
       const r = await fetch(`${API}/api/lists/${LIST}/admin/translate`, { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ to, strings }), signal: giveUp(150000) }).catch(() => null);
       const jr = r && r.ok ? await r.json().catch(() => null) : null;
+      if (!DOC) return xlRest();   // signed out while Claude worked
       if (!jr || !Array.isArray(jr.out) || !jr.out.length) {
         return fail(r && r.status === 503 ? 'The API has no translation key yet. On the Mac: npx wrangler secret put ANTHROPIC_API_KEY, then node tools/deploy-api.mjs.' : r && r.status === 401 ? 'Password rejected'
           : r && (r.status === 502 || r.ok) ? 'Claude could not finish the translation this time. Nothing was changed; try again in a minute.' : 'Translation failed. Check the connection and try again.',
@@ -864,6 +902,7 @@
       if (!words && !strings.length) return fail('Claude sent no words for the letters of your name this time. Try again in a minute.', 'No words this time');
     }
     await wait(Math.max(0, 900 - (performance.now() - t0)));   // the circle is a beat, not a flash
+    if (!DOC) return xlRest();   // signed out meanwhile
     /* applied to the list as it is now: a save made while Claude worked (an item edited meanwhile) stays */
     const prev = DOC, doc = JSON.parse(JSON.stringify(DOC)), n = xlApply(doc, to, out, sent);
     let extra = 0; const lt = doc.site.letters;
@@ -885,7 +924,21 @@
   let setupP = null;
   const saveSetup = () => setupP || (setupP = doSaveSetup().finally(() => { setupP = null; }));
   async function doSaveSetup() {
-    const f = $('#setupForm'), doc = JSON.parse(JSON.stringify(DOC));
+    const f = $('#setupForm'), short = () => !!f.elements.currency.value && !String(f.elements.rate.value).trim();   // a currency without its rate
+    if (rateP && short() && rateP !== rateGaveUp) {   // a currency just picked: its rate is on the way, so the save waits for it (≤ 9 s); none came → no save, and why
+      const until = Date.now() + 9000, gen = setupGen, edits = setupEdits; let said = 0;
+      while (rateP && short() && setupGen === gen && setupEdits === edits && Date.now() < until) {
+        if (Date.now() - said > 2000) { toast("Getting today's rate…"); said = Date.now(); }   // a toast lasts 2.2 s; the wait can be longer
+        await Promise.race([rateP, wait(Math.min(250, until - Date.now()))]);
+      }
+      if (setupGen !== gen || !DOC) return false;   // the form was redrawn or he signed out meanwhile: nothing of it is saved
+      if (setupEdits !== edits) { untoast(); return false; }   // he typed or picked meanwhile: his next tap saves the finished form
+      if (short()) {   // a failed fetch already said so
+        if (rateP) { rateGaveUp = rateP; toast("Today's rate is slow to come. Type it in, or tap again to go on without it.", true, 4500); snd('state.error'); }
+        return false;
+      }
+    }
+    const doc = JSON.parse(JSON.stringify(DOC));
     const lang2 = String(f.elements.lang2.value || 'ru').toLowerCase(), cur = f.elements.currency.value, rate = parseFloat(String(f.elements.rate.value).replace(',', '.'));
     doc.site.lang2 = lang2;
     if (cur) doc.site.currency = cur; else delete doc.site.currency;
@@ -903,7 +956,7 @@
     if (rs && !(rate > 0 && isFinite(rate))) { toast('Rate must be a number like 34.5', true); snd('state.error'); return false; }
     const missing = Object.values(doc.ui).some(v => v && typeof v === 'object' && !v[lang2]);
     if (PACKS.includes(lang2) && lang2 !== 'ru' && missing) {   // bring the page's own words in that language (never overwriting what is there)
-      const pack = await fetch(`assets/lang/${lang2}.json`, { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).catch(() => null);
+      const pack = await fetch(`assets/lang/${lang2}.json`, { cache: 'no-cache', signal: giveUp(10000) }).then(r => r.ok ? r.json() : null).catch(() => null);   // a stalled link ends as "could not load", not never
       if (pack) for (const [k, v] of Object.entries(pack)) { if (!doc.ui[k]) continue; if (typeof doc.ui[k] !== 'object') doc.ui[k] = { en: doc.ui[k] }; if (!doc.ui[k][lang2]) doc.ui[k][lang2] = v; }
       else toast(`Could not load the ${lang2.toUpperCase()} words; the page falls back to English`, true);
     }
@@ -914,6 +967,7 @@
   }
   /* leaving the Setup tab, Reload or Sign out with unsaved picks asks first */
   async function guardSetup() {
+    if (setupP) { toast('Still saving…'); return false; }   // a save on its way (maybe waiting for the rate): one thing at a time, tap again once it lands
     if (!setupDirty()) return true;
     const v = await ask({ title: 'Unsaved setup', text: 'Save it, or throw it away?', buttons: [{ label: 'Save setup', value: 'save', kind: 'primary' }, { label: 'Discard', value: 'discard', kind: 'ghost danger' }, { label: 'Keep editing', value: 'keep', kind: 'ghost' }] });
     if (v === 'save') return await saveSetup();
@@ -931,7 +985,7 @@
     $('#edTitle').textContent = isNew ? 'New item' : 'Edit item';
     const v = (k, val) => { form.elements[k].value = val ?? ''; };
     v('name.en', cur.name.en); v('name.l2', cur.name[L2]); v('desc.en', cur.desc.en); v('desc.l2', cur.desc[L2]);
-    v('price.en', enOf(cur.price)); v('price.l2', l2Of(cur.price) === enOf(cur.price) ? '' : l2Of(cur.price)); v('id', cur.id);
+    v('price.en', enOf(cur.price)); v('price.l2', sameUSD(l2Of(cur.price), enOf(cur.price)) ? '' : l2Of(cur.price)); v('id', cur.id);
     form.elements['price.l2'].placeholder = DOC.site.currency && +DOC.site.rate > 0 ? `≈ from USD in ${DOC.site.currency}` : 'same as EN';
     v('note.en', cur.note && cur.note.en); v('note.l2', cur.note && cur.note[L2]);
     $('#priceConv').hidden = !(DOC.site.currency && +DOC.site.rate > 0);
@@ -1037,8 +1091,10 @@
     const de = form.elements['desc.en'].value.trim(), d2 = form.elements['desc.l2'].value.trim();
     it.desc = Object.assign(keep(it.desc), { en: de, [L2]: d2 || de });
     const pe = window.Langs ? Langs.usd(form.elements['price.en'].value.trim()) : form.elements['price.en'].value.trim(), pr = form.elements['price.l2'].value.trim();
-    const price = Object.assign(keep(it.price), { en: pe || pr });   // prices typed in other languages stay
-    if (pr && pr !== pe) price[L2] = pr; else delete price[L2];   // nothing typed: the page converts from USD at the rate in Setup
+    const cur2 = DOC.site.currency && DOC.site.currency !== 'USD', was = enOf(it.price);
+    const price = Object.assign(keep(it.price), { en: pe || (cur2 && window.Langs && Langs.usd(pr) !== pr ? '' : pr) });   // prices typed in other languages stay; a bare number typed only in the list's other money is not dollars
+    if (price.en !== was) for (const k of Object.keys(price)) if (k !== 'en' && k !== L2 && sameUSD(price[k], was)) delete price[k];   // a copy of the old USD price would read as typed once it changes
+    if (pr && !sameUSD(pr, pe)) price[L2] = pr; else delete price[L2];   // nothing typed (or a copy of the USD price): the page converts from USD at the rate in Setup
     it.price = Object.keys(price).length === 1 ? price.en : price;
     const ne = form.elements['note.en'].value.trim(), nr = form.elements['note.l2'].value.trim();
     it.note = Object.assign(keep(it.note), { en: ne, [L2]: nr || ne });
@@ -1144,11 +1200,12 @@
   /* ---------- toast ---------- */
   /* while the editor is open the toast lives inside it: a modal dialog sits in the top layer, above any z-index */
   let tt = 0;
-  function toast(msg, bad) {
+  function toast(msg, bad, ms) {
     const el = $('#toast'), host = ed.open ? ed : $('#adm'); if (el.parentNode !== host) host.appendChild(el);
     $('#toastMsg').textContent = msg; el.classList.toggle('bad', !!bad); el.hidden = false;
-    clearTimeout(tt); tt = setTimeout(() => { el.hidden = true; }, 2200);
+    clearTimeout(tt); tt = setTimeout(() => { el.hidden = true; }, ms || 2200);
   }
+  function untoast() { clearTimeout(tt); $('#toast').hidden = true; }
   ed.addEventListener('close', () => $('#adm').appendChild($('#toast')));
   /* an upload whose list save failed and was given up on. If that save did land after all (its answer lost), the Worker
      sees the live list pointing at the photo and keeps it (409). */
