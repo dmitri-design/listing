@@ -63,6 +63,10 @@ input[data-l2-input], textarea[data-l2-input] { background: #fffaf0; }
 .segsm button { appearance: none; border: 0; background: transparent; color: var(--muted); font: 600 14px/1 var(--sans); min-height: 38px; min-width: 44px; padding: 0 12px; border-radius: 8px; cursor: pointer; }
 .segsm button.on { background: var(--paper); color: var(--ink); box-shadow: 0 1px 2px rgba(20,20,22,.08); }
 .segsm button.on[data-v="y"] { color: var(--green); } .segsm button.on[data-v="g"] { color: var(--amber); } .segsm button.on[data-v="n"] { color: var(--red); }
+.hearts-seg button { color: #d4574e; letter-spacing: 1px; } .hearts-seg button:not(.on) { opacity: .55; } .hearts-seg button.on { color: #c9483f; }
+.rsub .hearts { color: #d4574e; letter-spacing: 1px; font-size: 11px; }
+.rsub .hearts.unset { color: var(--muted); }
+.help .hh { color: #d4574e; letter-spacing: 1px; }
 .chk { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); min-height: 44px; }
 .chk input { width: 20px; height: 20px; accent-color: var(--ink); }
 
@@ -219,27 +223,32 @@ b[data-l2] { font-weight: 600; }
 #setupForm.busy > [inert] { opacity: .5; transition: opacity .2s; }   /* the rest of Setup waits while a translation runs */
 /* the Translate button: a pill that closes into a circle with a ring while Claude works, then opens again with the word for "translated" */
 .fld.xl { justify-items: center; }
-.xl-btn { position: relative; width: 100%; max-width: 100%; min-height: 44px; height: auto; padding: 8px 18px; border-radius: 999px; overflow: hidden; transition: width .38s var(--ease), background-color .25s, border-color .25s, color .25s, transform .12s; }
-.xl-lbl { display: inline-block; text-align: center; line-height: 1.3; transition: opacity .16s, transform .3s var(--ease); }   /* a long language name wraps (Bahasa Indonesia at 320) */
-.xl-btn.is-loading { width: 44px; height: 44px; padding: 0; cursor: progress; }
-.xl-btn.is-loading .xl-lbl { opacity: 0; transform: scale(.7); }
-.xl-spin { position: absolute; inset: 0; margin: auto; width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(128,128,128,.3); border-top-color: currentColor; opacity: 0; animation: xl-spin .72s linear infinite; animation-play-state: paused; transition: opacity .2s; }
-@supports (color: color-mix(in srgb, red 50%, blue)) { .xl-spin { border-color: color-mix(in srgb, currentColor 25%, transparent); border-top-color: currentColor; } }
-.xl-btn.is-loading .xl-spin { opacity: 1; animation-play-state: running; transition-delay: .2s; }
-.xl-btn.is-done { border-color: var(--green); color: var(--green); }
-.xl-btn.shake { animation: shake .4s cubic-bezier(.4,0,.2,1); }
-@keyframes xl-spin { to { transform: rotate(1turn); } }
+.xl-pb { position: relative; display: grid; justify-items: center; align-items: center; width: 100%; }   /* grid centring: the overshoot spills evenly both sides (margin:auto pushes it right, a flex row shrinks it away) */
+/* the Translate button = Codrops' "Circular Progress Button", elastic version (tympanus.net/Tutorials/CircularProgressButton,
+   2014): the pill winds up and closes into a 44 px ring, the ring fills while Claude works, then it springs open green with a
+   drawn check and the word for "translated", or red with a drawn cross and a shake. No sheet after it. */
+.xl-btn { width: 100%; max-width: none; min-height: 44px; height: auto; padding: 8px 18px; border-radius: 999px; overflow: hidden;   /* max-width:100% would clip the elastic overshoot flat */
+  transition: background-color .3s, color .3s, width .3s cubic-bezier(.25,.25,.4,1.4), border-width .3s, border-color .3s, transform .12s; }   /* demo: .elastic.progress-button button (its 1.6 overshoots past a phone's edges; 1.4 stays on screen) */
+.xl-lbl { display: inline-block; text-align: center; line-height: 1.3; transition: opacity .3s .1s; }   /* a long language name wraps (Bahasa Indonesia at 320); demo: the span coming back */
+.xl-pb.loading .xl-btn { width: 44px; height: 44px; padding: 0; border-width: 3px; border-color: var(--line); background-color: transparent; cursor: progress;
+  transition: background-color .3s, color .3s, width .3s cubic-bezier(.6,-.4,.75,.75), border-width .3s, border-color .3s, transform .12s; }   /* demo: .loading.elastic; the border becomes the ring's track */
+.xl-pb.loading .xl-lbl, .xl-pb.success:not(.said) .xl-lbl, .xl-pb.error .xl-lbl, .xl-pb.out .xl-lbl { opacity: 0; transition: opacity .15s; }   /* .out = the word leaving (removing .said would bring the check back for 150 ms) */
+.xl-pb.success .xl-btn, .xl-pb.error .xl-btn { height: 44px; white-space: nowrap; color: #fff; }
+.xl-pb.success .xl-btn { border-color: #23804e; background-color: #23804e; }   /* white on it 4.9:1 (the demo's #1ECD97 is 2.05:1) */
+.xl-pb.error .xl-btn { border-color: #b8322a; background-color: #b8322a; }     /* white on it 6.0:1 (the demo's #FB797E is 2.58:1) */
+.xl-pb svg { position: absolute; top: 50%; left: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; overflow: visible; pointer-events: none; }
+.xl-pb path { fill: none; opacity: 0; }   /* hidden outside its state: a round cap would otherwise leave a dot */
+.xl-ring path { stroke: var(--ink); stroke-width: 3; stroke-dasharray: 129; stroke-dashoffset: 129; }   /* 2π·20.5 = 128.8, rounded up; the JS drives the offset */
+.xl-ok path, .xl-no path { stroke: #fff; stroke-width: 2.5; stroke-linecap: round; transition: opacity .1s; }
+.xl-ok path:first-child { stroke-dasharray: 17.5; stroke-dashoffset: 17.5; }
+.xl-ok path:last-child { stroke-dasharray: 7; stroke-dashoffset: 7; }
+.xl-no path { stroke-dasharray: 8.3; stroke-dashoffset: 8.3; }
+.xl-pb.loading .xl-ring path, .xl-pb.success:not(.said) .xl-ok path, .xl-pb.error .xl-no path { opacity: 1; transition: stroke-dashoffset .3s; }   /* demo timing */
+.xl-pb.success .xl-ok path, .xl-pb.error .xl-no path { stroke-dashoffset: 0; }
+.xl-pb.shake { animation: shake .4s cubic-bezier(.4,0,.2,1); }
+.xl-pb .xl-btn:disabled { opacity: 1; cursor: default; }   /* disabled only while it shows a state: the green / red stay full strength */
+.xl-pb.loading .xl-btn:disabled { cursor: progress; }
 @keyframes shake { 0%, 100% { transform: translateX(0); } 18% { transform: translateX(-7px); } 38% { transform: translateX(6px); } 58% { transform: translateX(-4px); } 78% { transform: translateX(2px); } }
-/* "Done!": the green mark draws its check, the line in the new language sits under it */
-.done .ask-in { text-align: center; padding-top: 22px; }
-.done-mark { width: 60px; height: 60px; margin: 0 auto 12px; border-radius: 50%; background: #23804e; color: #fff; display: grid; place-items: center; box-shadow: 0 10px 24px -10px rgba(35,128,78,.7); animation: done-pop .5s var(--ease) both; }
-.done.quiet .done-mark { background: var(--cream-2); color: var(--ink); box-shadow: none; }
-.done-check { width: 30px; height: 30px; overflow: visible; }
-.done-check path { fill: none; stroke: currentColor; stroke-width: 10; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 72; stroke-dashoffset: 72; animation: done-draw .5s var(--ease) .2s forwards; }
-.done-native { font: 400 21px/1.3 var(--serif); color: var(--ink); margin: -4px 0 12px; overflow-wrap: anywhere; }
-.done-native[hidden] { display: none; }
-@keyframes done-pop { from { transform: scale(.6); opacity: 0; } }
-@keyframes done-draw { to { stroke-dashoffset: 0; } }
 /* the drawings for the about sheet's corner: a tile each, on paper, ink; the pick gets a ring */
 .heroes { display: flex; flex-wrap: wrap; gap: 8px; }
 .hero { appearance: none; width: 64px; height: 72px; padding: 6px; border: 2px solid var(--line); border-radius: 14px; background: #fffdf8; cursor: pointer; display: grid; place-items: center; color: var(--muted); font: 600 12px/1 var(--sans); }
@@ -298,7 +307,7 @@ b[data-l2-cur] { font-weight: 500; color: var(--muted); }
 .toast.bad .t-dot { background: var(--red); }
 @keyframes toast-in { from { transform: translate(-50%, 12px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .toast { animation: none; } .btn { transition: none; } ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
-  .xl-btn, .xl-lbl { transition: none; } .xl-btn.shake, .done-mark { animation: none; } .done-check path { animation: none; stroke-dashoffset: 0; } }
+  .xl-btn, .xl-lbl, .xl-pb path { transition: none !important; } .xl-pb.shake { animation: none; } }
 
 /* ---------- lights off ---------- */
 html.dark {

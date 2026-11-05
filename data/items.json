@@ -283,6 +283,18 @@
     "aboutLink": {
       "en": "About the owner",
       "ru": "Об авторе"
+    },
+    "want1": {
+      "en": "just a cool idea",
+      "ru": "просто классная идея"
+    },
+    "want2": {
+      "en": "would be happy to have",
+      "ru": "порадует"
+    },
+    "want3": {
+      "en": "really want",
+      "ru": "очень хочу"
     }
   },
   "items": [

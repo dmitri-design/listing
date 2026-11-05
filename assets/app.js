@@ -32,6 +32,12 @@ const art = (k) => (ART[k] || ART.box).replace('<svg ', '<svg width="100%" heigh
 const safeUrl = (u) => (typeof u === 'string' && /^https?:\/\//i.test(u)) ? u : null;
 /* "About the owner": site.about = { title, text, photo, links } (admin → Texts); the link shows once the story has an English text */
 const ABOUT0 = { en: 'About the owner', ru: 'Об авторе' };   // a list saved before this word existed
+/* how much the owner wants it: item.want 1–3 (missing = 2), shown as hearts where the tier label was; the words for a list saved before they existed */
+const WANT0 = { want1: { en: 'just a cool idea', ru: 'просто классная идея' }, want2: { en: 'would be happy to have', ru: 'порадует' }, want3: { en: 'really want', ru: 'очень хочу' } };
+const wantOf = (it) => { const w = Math.round(+(it && it.want)); return w >= 1 && w <= 3 ? w : 2; };
+const wantWord = (n) => (DATA && DATA.ui && DATA.ui['want' + n]) || WANT0['want' + n];
+const HEART = '<svg viewBox="0 0 16 14" aria-hidden="true"><path d="M8 13.6 1.7 7.4C.1 5.9.1 3.4 1.7 1.9a3.5 3.5 0 0 1 4.9 0L8 3.3l1.4-1.4a3.5 3.5 0 0 1 4.9 0c1.6 1.5 1.6 4 0 5.5Z"/></svg>';
+const hearts = (n, of) => Array.from({ length: of || n }, (_, i) => i < n ? HEART : HEART.replace('<svg ', '<svg class="off" ')).join('');
 const aboutOf = () => { const a = DATA && DATA.site && DATA.site.about; return a && typeof a === 'object' && !Array.isArray(a) && String(pick(a.text, 'en')).trim() ? a : null; };
 /* the link's label and the sheet's heading: the stored title, else "About <owner>" in English and the page's own word in the second language */
 function aboutTitle() {
@@ -174,6 +180,7 @@ function renderSite(site, quiet) {
   $('.brand').innerHTML = t(site.brand);
   $('.tag').innerHTML = t(site.tagline);
   $('.legend').innerHTML = t(site.legend, true);
+  const wl = $('.want-legend'); if (wl) wl.innerHTML = [1, 2, 3].map(n => `<span class="wl"><span class="hs">${hearts(n)}</span> ${t(wantWord(n))}</span>`).join('');   // spaced, no dots: a wrapped line never ends on one
   $('footer .txt').innerHTML = t(site.footer);
   const ab = $('#aboutRow'); if (ab) { ab.hidden = !aboutOf(); $('#aboutLink').innerHTML = t(aboutTitle()); if (aboutD && aboutD.open) fillAbout(); }
   setLang(L(), false);
@@ -254,13 +261,13 @@ function cardHTML(it, tier, idx, ri, eager) {
       <div class="sway">
         <svg class="clip" style="--pin:${esc(pin)};--tilt:${tilt}" aria-hidden="true"><use href="#pin"/></svg>
         <div class="card${got ? ' got' : ''}${booked ? ' booked' : ''}" data-id="${id}">
-          <div class="face front" style="--c:${esc(tier.c)}" role="button" tabindex="0" aria-labelledby="n-${id}${got ? ` s-${id}` : ''}${booked ? ` b-${id}` : ''}" aria-expanded="false">
+          <div class="face front" style="--c:${esc(tier.c)}" role="button" tabindex="0" aria-labelledby="n-${id} w-${id}${got ? ` s-${id}` : ''}${booked ? ` b-${id}` : ''}" aria-expanded="false">
             <div class="price">${t(priceOf(it))}</div>
             ${got ? `<div class="stamp" id="s-${id}">${t(ui.got)} <span aria-hidden="true">✓</span></div>` : ''}
             ${imgHTML(it, 'imgbox', eager)}
             <h3 class="name" id="n-${id}">${t(it.name)}</h3>
             <p class="desc">${t(it.desc)}</p>
-            <div class="foot"><span class="tier-lbl"><i class="tr"></i>${t(tier.short || tier.name)}</span><span class="tap">${t(ui.tap)} ↻</span></div>
+            <div class="foot"><span class="want" id="w-${id}" data-w="${wantOf(it)}">${hearts(wantOf(it), 3)}<span class="sr">${t(wantWord(wantOf(it)))}</span></span><span class="tap">${t(ui.tap)} ↻</span></div>
             ${got ? CROSS : ''}${booked ? ribbonHTML(it.id) : ''}
           </div>
           ${got ? gotBackHTML(it, ui) : `<div class="face back" inert>
@@ -450,6 +457,7 @@ function flip(card, quiet) {
   }
   const row = SW.rows.find(x => x.el.contains(card)); if (row) kick(row, flipped ? 12 : -12);   /* the flick also rocks the card on its pin */
   clearTimeout(card._t); card._t = setTimeout(() => card.classList.remove('anim'), 650);
+  glowPoke();   // a flipped card goes dark at once; one turned back lights up again without waiting for the mouse
 }
 
 /* ---------- holo: light follows the pointer (desktop) or the phone's tilt; springs back when let go ---------- */
@@ -481,6 +489,37 @@ if (finePointer.matches && !reduced.matches) {
     if (e.relatedTarget && card.contains(e.relatedTarget)) return;
     release(card);
   });
+}
+
+/* ---------- the glowing edge (desktop): the fronts within 64 px of the mouse light their border on the side facing it ----------
+   One pointermove for all cards, rAF-throttled; flipped, off-screen and resting (a sheet open) cards stay dark. Built upon
+   Aceternity UI "Glowing Effect" (proximity 64, inactive zone .01); the angle takes the short way round. */
+const GLOW = { prox: 64, dead: 0.01 }, glowOn = finePointer.matches && !reduced.matches, glowLit = new Set();
+let glowX = -1e4, glowY = -1e4, glowRaf = 0;
+function glowPoke() { if (glowOn && !glowRaf) glowRaf = requestAnimationFrame(glowStep); }
+function glowStep() {
+  glowRaf = 0;
+  const seen = [], away = glowX < -1e3 || !!document.querySelector('dialog[open]');
+  for (const f of document.querySelectorAll('.card > .front')) {   // read every box first, then write
+    const live = !away && !f.parentElement.classList.contains('flipped') && !f.closest('.drop.off');
+    seen.push([f, live ? f.getBoundingClientRect() : null]);
+  }
+  for (const [f, r] of seen) {
+    const p = GLOW.prox, cx = r ? r.left + r.width / 2 : 0, cy = r ? r.top + r.height / 2 : 0;
+    const near = r && glowX > r.left - p && glowX < r.right + p && glowY > r.top - p && glowY < r.bottom + p
+      && Math.hypot(glowX - cx, glowY - cy) >= 0.5 * Math.min(r.width, r.height) * GLOW.dead;
+    if (!near) { if (glowLit.delete(f)) f.style.setProperty('--go', '0'); continue; }
+    const raw = Math.atan2(glowY - cy, glowX - cx) * 180 / Math.PI + 90, prev = f._ga == null ? 0 : f._ga;
+    const ga = Math.round((prev + ((raw - prev) % 360 + 540) % 360 - 180) * 10) / 10;   // the short way round
+    if (ga !== f._ga) { f._ga = ga; f.style.setProperty('--ga', String(ga)); }
+    if (!glowLit.has(f)) { glowLit.add(f); f.style.setProperty('--go', '1'); }
+  }
+  for (const f of glowLit) if (!f.isConnected) glowLit.delete(f);
+}
+if (glowOn) {
+  document.addEventListener('pointermove', (e) => { if (e.pointerType === 'touch') return; glowX = e.clientX; glowY = e.clientY; glowPoke(); }, { passive: true });
+  document.addEventListener('pointerout', (e) => { if (!e.relatedTarget) { glowX = glowY = -1e4; glowPoke(); } });   // the mouse left the window
+  window.addEventListener('scroll', glowPoke, { passive: true, capture: true });   // the cards move under a still mouse (also the rows' own scroll)
 }
 
 /* phones: gyroscope. Android: no prompt. iPhone: Safari asks for motion access — only after the guest taps
@@ -552,7 +591,7 @@ function setBooked(it, booked) {
   const rib = card.querySelector('.front .ribbon');
   if (show && !rib) card.querySelector('.front').insertAdjacentHTML('beforeend', ribbonHTML(it.id));
   if (!show && rib) rib.remove();
-  card.querySelector('.front').setAttribute('aria-labelledby', `n-${it.id}${got ? ` s-${it.id}` : ''}${show ? ` b-${it.id}` : ''}`);
+  card.querySelector('.front').setAttribute('aria-labelledby', `n-${it.id} w-${it.id}${got ? ` s-${it.id}` : ''}${show ? ` b-${it.id}` : ''}`);
   const bk = card.querySelector('.bk'); if (bk) bk.innerHTML = bookPart(it);
 }
 let bookingsAt = 0, bkSeq = 0;

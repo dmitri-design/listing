@@ -16,6 +16,8 @@
 @property --py { syntax: '<number>'; inherits: true; initial-value: 0; }
 @property --d { syntax: '<number>'; inherits: true; initial-value: 0; }
 @property --kick { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --ga { syntax: '<number>'; inherits: false; initial-value: 0; }   /* the glowing edge: the angle (0 = top, clockwise) … */
+@property --go { syntax: '<number>'; inherits: false; initial-value: 0; }   /* … and how lit it is */
 
 :root {
   color-scheme: light;
@@ -108,12 +110,43 @@ h1 .w { white-space: nowrap; }   /* a word never breaks between its letters */
 h1 .ch { display: inline-block; animation: rise .8s cubic-bezier(.2,.9,.25,1.15) both; animation-delay: calc(var(--i) * 42ms); }
 h1.still .ch { animation: none; }   /* a late live list redraws the words in place */
 h1 i { font-style: italic; color: var(--gold); }
+/* sparkles under the title, dark theme only (Aceternity UI "Sparkles", re-implemented in assets/sparkle.js): the canvas, then four
+   gradient lines (indigo 75 % wide + sky 25 %, each a blurred and a sharp hairline). No mask-image: the edge fade is per dot. */
+.title-wrap { position: relative; }
+.sparkle { display: none; }
+html.dark .sparkle { display: block; position: absolute; inset: 100% 0 auto; margin: 0 auto; z-index: -1; pointer-events: none;   /* right under the h1, behind the tag line, above the wall */
+  width: min(640px, 100%); height: clamp(96px, 22vw, 160px); opacity: 0; transition: opacity 1s cubic-bezier(.42,0,.58,1); }
+html.dark .sparkle.on { opacity: 1; }
+.sparkle canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sparkle i { position: absolute; top: 0; height: 1px; background: linear-gradient(to right, transparent, var(--sp, #615fff), transparent); }
+.sparkle .a { left: 12.5%; width: 75%; height: 2px; filter: blur(8px); }
+.sparkle .b { left: 12.5%; width: 75%; }
+.sparkle .c { left: 37.5%; width: 25%; height: 5px; filter: blur(8px); --sp: #00a6f4; }
+.sparkle .d { left: 37.5%; width: 25%; --sp: #00a6f4; }
 .tag { max-width: 560px; margin: 0 auto; color: var(--muted); font-size: 15px; line-height: 1.5; animation: fade 1s .5s both; }
 /* "About the owner": a quiet link under the tag line (shown once the owner wrote a story in admin → Texts); opens the about sheet */
 .about-row { margin: 0 0 -8px; animation: fade 1s .7s both; }
-.about-link { appearance: none; border: 0; background: none; margin: 0; padding: 0 10px; min-height: 44px; display: inline-flex; align-items: center; cursor: pointer; font: 500 13px/1.2 var(--sans); color: var(--muted); text-decoration: none; text-underline-offset: 3px; border-radius: 8px; }
-.about-link:hover { text-decoration: underline; }
-.about-link:focus-visible { outline: 2px solid #8fb08a; outline-offset: 2px; }
+/* "About the owner" = MicroKit's "Gradient Underline Button" (microkit.co, MIT): a warm hairline that feathers out at both ends
+   grows across while the label scales up. A mouse plays it on hover, a keyboard on focus; a phone can't hover, so there the
+   line is drawn once and stays. The label is the button's own language spans (rewritten on every render), the line a pseudo. */
+.about-link { --ul: #ea580c; --ul-35: rgba(234,88,12,.35); position: relative; appearance: none; border: 0; background: none; margin: 0; padding: 13px 24px; min-height: 44px;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font: 500 15px/1.2 var(--sans); color: var(--ink); text-decoration: none; border-radius: 8px; -webkit-tap-highlight-color: transparent; }
+.about-link > span { transition: transform .5s ease, opacity .15s; }   /* the label; a flex item, so it can scale (the hidden language keeps its display:none !important) */
+.about-link::before, .about-link::after { content: ""; position: absolute; left: 0; right: 0; bottom: 5px; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, transparent 0%, var(--ul-35) 30%, var(--ul) 50%, var(--ul-35) 70%, transparent 100%); }
+.about-link::before { opacity: .4; }   /* at rest: the line, faint, so it reads as a link before any hover */
+.about-link::after { transform: scaleX(0); transform-origin: left; transition: transform 1s cubic-bezier(.165,.84,.44,1); }   /* the reference grows width 0 → 100%; scaleX looks the same on the compositor */
+@media (hover: hover) and (pointer: fine) { .about-link:hover > span { transform: scale(1.2); } .about-link:hover::after { transform: none; } }
+.about-link:focus-visible > span { transform: scale(1.2); }
+.about-link:focus-visible::after { transform: none; }
+.about-link:focus-visible { outline: 2px solid #8fb08a; outline-offset: 4px; }
+@media (hover: none), (pointer: coarse) {   /* a phone: the line is simply there (drawn in once, just after the row fades in); a tap dims the label */
+  .about-link::before { display: none; }
+  .about-link::after { transform: none; animation: ul-draw 1s 1.3s cubic-bezier(.165,.84,.44,1) both; }
+  .about-link:active > span { opacity: .55; transition-duration: 0s; }
+}
+@keyframes ul-draw { from { transform: scaleX(0); } }
+#app.alt .about-link:has(> [dir="rtl"])::after { transform-origin: right; }   /* a right-to-left second language draws from the right */
 .swash { width: 160px; margin: 14px auto 0; display: block; animation: fade 1s .7s both; }
 .tiernav { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 22px 0 6px; animation: fade 1s .9s both; }
 .tiernav a {
@@ -178,6 +211,17 @@ h1 i { font-style: italic; color: var(--gold); }
   box-shadow: 0 18px 30px -16px rgba(40,30,10,.45), 0 2px 0 rgba(0,0,0,.02), inset 0 1px 0 rgba(255,255,255,.95), inset 0 0 0 1px rgba(255,255,255,.45), inset 0 -2px 0 rgba(90,70,40,.06);
   padding: 22px 16px 14px;
 }
+/* a thin glowing edge where the mouse is near (Aceternity UI "Glowing Effect": its repeating rainbow conic, spread 40°, 64 px
+   proximity, the angle eased 2 s cubic-bezier(.16,1,.3,1), the fade .3s). No mask-image inside a card (it breaks the 3D flip in
+   Chrome): the front's own 1 px border goes transparent and its band is painted by two layers clipped to the border box: the
+   rainbow, and over it a cover in the old border colour that thins to (1 − --go) around --ga. The paper stays on the padding box. */
+@media (hover: hover) and (pointer: fine) {
+  .front { --gs: 40; border-color: transparent;
+    background: url(paper.svg) padding-box, linear-gradient(var(--paper), var(--paper)) padding-box,
+      conic-gradient(from calc((var(--ga, 0) - var(--gs)) * 1deg), #e0d8c6 0deg, rgb(224 216 198 / calc(1 - var(--go, 0))) calc(var(--gs) * 1deg), #e0d8c6 calc(var(--gs) * 2deg)) border-box,
+      repeating-conic-gradient(from 236.84deg, #dd7bbb 0%, #d79f1e 5%, #5a922c 10%, #4c7894 15%, #dd7bbb 20%) border-box var(--paper);   /* the card's own colour stays paper underneath */
+    transition: --ga 2s cubic-bezier(.16,1,.3,1), --go .3s cubic-bezier(.4,0,.2,1); }
+}
 .front::before { content: ""; position: absolute; top: 10px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--cream-2); box-shadow: inset 0 1px 2px rgba(0,0,0,.18); z-index: 6; }
 /* lamination: a soft gloss across the top third + a light that follows the pointer (desktop) or drifts slowly (phones) */
 .front::after {
@@ -203,8 +247,13 @@ h1 i { font-style: italic; color: var(--gold); }
 .name { font-family: var(--serif); font-size: 16.5px; line-height: 1.2; margin: 4px 0 4px; letter-spacing: -.005em; overflow-wrap: anywhere; hyphens: auto; }
 .desc { color: var(--muted); font-size: 12.5px; line-height: 1.42; margin: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .foot { margin-top: auto; padding-top: 6px; display: flex; justify-content: space-between; align-items: center; gap: 10px; white-space: nowrap; font-size: 11px; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; min-width: 0; }
-.foot .tier-lbl { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.foot .tr { width: 8px; height: 8px; border-radius: 50%; background: var(--c); display: inline-block; margin-right: 6px; vertical-align: -1px; }
+.foot .want { display: inline-flex; align-items: center; gap: 2px; min-width: 0; }   /* how much he wants it, where the tier label was */
+.foot .want svg { width: 11px; height: 10px; fill: #d4574e; flex: none; }
+.foot .want svg.off { fill: rgba(34,29,23,.14); }
+.want-legend { margin-top: 4px; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 16px; }
+.want-legend .wl { white-space: nowrap; }
+.want-legend .hs { display: inline-flex; gap: 1px; vertical-align: -1px; }
+.want-legend svg { width: 10px; height: 9px; fill: #d4574e; }
 .foot .tap { flex: none; opacity: .9; }
 
 /* ---------- the back: pearl glass with a soft iridescent sheen (light, legible, reflective) ---------- */
@@ -410,7 +459,7 @@ footer .bar { width: 46px; height: 1px; background: var(--line); margin: 0 auto 
 /* the owner's name as keycaps, after the Velvet UI wordmark, exact: a tile on a 6 px slab (a hairline blur under it) that sinks
    5 px while held (35 ms in, 70 ms out), no hover, a thin ring only for keyboard focus; the card under the keys shows "D - 1/6"
    and the word, cross-fading and sliding 200 ms toward the key that was pressed. The rule above the keys grows. */
-footer.lettered .bar { width: 120px; height: 2px; margin-bottom: 24px; }
+footer.lettered .bar { width: 100%; max-width: 560px; height: 2px; margin-bottom: 24px; background: linear-gradient(90deg, transparent, var(--line) 18%, var(--line) 82%, transparent); }   /* as wide as the keys below, soft at the ends */
 .letters { max-width: 560px; margin: 0 auto 26px; text-align: left; }
 .lset:empty { display: none; }
 .lkeys { display: grid; grid-template-columns: repeat(var(--n, 6), minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; width: 100%; }
@@ -488,6 +537,8 @@ html.dark .sheet.about::backdrop { background: rgba(0,0,0,.42); }
 html.dark .about-hero img { filter: invert(1) brightness(.92) drop-shadow(0 10px 10px rgba(0,0,0,.4)); }   /* the ink goes light: a negative of the drawing */
 html.dark .about-rule { background: rgba(241,233,218,.18); }
 html.dark .about-links a { background: rgba(255,255,255,.06); border-color: rgba(241,233,218,.32); }
+html.dark .want-legend svg { fill: #f08a80; }
+html.dark .about-link { --ul: #f97316; --ul-35: rgba(249,115,22,.35); }   /* the reference's own orange glows on the dark room */
 html.dark .about-links a:hover { background: rgba(255,255,255,.14); border-color: var(--ink); }
 @media (prefers-reduced-motion: reduce) { ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; } }
 
@@ -547,3 +598,11 @@ html.preview .hero, html.preview footer, html.preview .tier-head, html.preview .
 html.preview #tiers { min-height: 100dvh; display: grid; align-content: center; padding: 8px 0 32px; }
 html.preview .tier { margin: 0; }
 @media (prefers-reduced-motion: reduce) { .zoom-d[open] .zoom-in, .zoom-d[open]::backdrop { animation: none !important; } .zoom-in { transition: none; } }
+/* reduced motion: the About link's line doesn't grow and its label doesn't scale; on hover / focus the line fades in, on a phone it is just there */
+@media (prefers-reduced-motion: reduce) {
+  .about-link > span { transform: none !important; }
+  .about-link::after { transform: none !important; animation: none !important; opacity: 0; transition: opacity .2s; }
+  .about-link:hover::after, .about-link:focus-visible::after { opacity: 1; }
+  .sparkle { transition: none !important; }
+}
+@media (prefers-reduced-motion: reduce) and (hover: none), (prefers-reduced-motion: reduce) and (pointer: coarse) { .about-link::after { opacity: 1; } }

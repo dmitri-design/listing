@@ -100,8 +100,8 @@
       <form id="setupForm" class="form">
         <label class="fld"><span>Second language</span><select name="lang2" id="lang2Sel"></select></label>
         <p class="help">English is always the first language. ✓ = the page's own words (buttons, hints, errors) are already translated; you can tweak them in Texts → Small words.</p>
-        <div class="fld xl"><button type="button" class="btn ghost xl-btn" id="xlBtn"><span class="xl-spin" aria-hidden="true"></span><span class="xl-lbl">Translate the list into <b data-l2-name>Русский</b></span></button>
-          <p class="help" id="xlHelp">Fills in everything still missing in that language: title, lines, tiers, item names, descriptions, notes and shop labels. Nothing already written is touched. Review the result in Items and Texts.</p></div>
+        <div class="fld xl"><div class="xl-pb" id="xlPb"><button type="button" class="btn ghost xl-btn" id="xlBtn" aria-describedby="xlHelp"><span class="xl-lbl">Translate the list into <b data-l2-name>Русский</b></span></button><svg class="xl-ring" viewBox="0 0 44 44" aria-hidden="true"><path d="M22 1.5a20.5 20.5 0 1 1 0 41a20.5 20.5 0 1 1 0-41"/></svg><svg class="xl-ok" viewBox="0 0 44 44" aria-hidden="true"><path d="M19.8 29.23 29.42 14.65"/><path d="M19.8 29.23 14.46 24.77"/></svg><svg class="xl-no" viewBox="0 0 44 44" aria-hidden="true"><path d="M22 22l-5.85-5.85"/><path d="M22 22l5.85 5.85"/><path d="M22 22l-5.85 5.85"/><path d="M22 22l5.85-5.85"/></svg></div>
+          <p class="help" id="xlHelp" aria-live="polite">Fills in everything still missing in that language: title, lines, tiers, item names, descriptions, notes and shop labels. Nothing already written is touched. Review the result in Items and Texts.</p></div>
         <div class="pair"><label class="fld"><span>Currency for the second price</span><select name="currency" id="curSel"></select></label><label class="fld"><span>1 USD =</span><div class="withbtn"><input name="rate" type="text" inputmode="decimal" placeholder="e.g. 34.5"><button type="button" class="btn ghost sm" id="rateFetch" title="Today's rate">↻</button></div></label></div>
         <p class="help" id="rateHelp">The currency follows the language you pick (rubles for Russian, hryvnias for Ukrainian, euros for German…). Picking a currency brings today's rate; ↻ fetches it again, and a rate you type wins. English prices are always USD. On the page, items without a typed second price show one converted from USD; in the editor, ≈ writes it in for you.</p>
         <div class="fld letters-ed" id="lettersEd">
@@ -177,6 +177,8 @@
         <label class="fld"><span>Description · EN</span><textarea name="desc.en" rows="2"></textarea></label>
         <label class="fld"><span>Description · <b data-l2>RU</b></span><textarea name="desc.l2" rows="2" data-l2-input></textarea></label>
         <div class="fld"><span>Tier</span><div class="segsm" id="tierSeg"></div></div>
+        <div class="fld"><span>How much I want it</span><div class="segsm hearts-seg" id="wantSeg"><button type="button" data-v="1" aria-label="Just a cool idea">♥</button><button type="button" data-v="2" aria-label="Would be happy to have">♥♥</button><button type="button" data-v="3" aria-label="Really want">♥♥♥</button></div>
+          <p class="help"><span class="hh">♥</span> just a cool idea · <span class="hh">♥♥</span> would be happy to have · <span class="hh">♥♥♥</span> really want. Guests see the hearts in the card's corner.</p></div>
         <div class="pair"><label class="fld"><span>Price (USD, approx.)</span><input name="price.en" type="text" placeholder="~$55" inputmode="text"></label><label class="fld"><span>Price · <b data-l2>RU</b> <b data-l2-cur></b></span><div class="withbtn"><input name="price.l2" type="text" data-l2-input placeholder="same as EN"><button type="button" class="btn ghost sm" id="priceConv" hidden title="From the USD price, at the rate in Setup">≈</button></div></label></div>
         <div class="pair"><label class="fld"><span>Price note · EN</span><input name="note.en" type="text" placeholder="retail · resale ~$80"></label><label class="fld"><span>Price note · <b data-l2>RU</b></span><input name="note.l2" type="text" data-l2-input></label></div>
         <label class="fld"><span>Id (url slug)</span><input name="id" type="text" pattern="[a-z0-9][a-z0-9-]*" placeholder="auto" autocapitalize="none"></label>
@@ -214,12 +216,6 @@
         <p class="err" id="tierErr" role="alert" hidden></p>
       </div>
     </form>
-  </dialog>
-
-  <dialog id="xlDone" class="sheet mini done" aria-labelledby="xlDoneTitle">
-    <div class="ask-in"><div class="done-mark" aria-hidden="true"><svg class="done-check" viewBox="0 0 96 96"><path d="M28 50.5 42.5 65 69 34"/></svg></div>
-      <h2 id="xlDoneTitle"></h2><p class="done-native" id="xlDoneNative" hidden></p><p id="xlDoneText"></p>
-      <div class="ask-btns"><button type="button" class="btn primary" id="xlDoneOk">Nice</button></div></div>
   </dialog>
 
   <dialog id="ask" class="sheet mini" aria-labelledby="askTitle">
